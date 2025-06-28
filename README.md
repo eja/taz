@@ -84,9 +84,6 @@ You can add custom links to the homepage using the `-url` flag multiple times:
 
 ## Building from Source
 
-Requirements:
-- Go 1.16 or later
-
 ```bash
 git clone https://github.com/eja/taz.git
 cd taz

@@ -1,16 +1,16 @@
-name: Build Windows AMD64
+name: Build Windows ARM64
 
 on:
   release:
     types: [published]
 
 env:
-    ASSET_NAME: "taz-windows_amd64.zip"
+    ASSET_NAME: "taz-windows_arm64.zip"
     ASSET_FILES: "taz.exe"
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-arm64
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -40,4 +40,3 @@ jobs:
           asset_path: ${{ env.ASSET_NAME }}
           asset_name: ${{ env.ASSET_NAME }}
           asset_content_type: application/octet-stream
-

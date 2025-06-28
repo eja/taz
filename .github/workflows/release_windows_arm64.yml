@@ -1,4 +1,4 @@
-name: Build Windows AMD64
+name: Build Windows ARM64
 
 on:
   release:

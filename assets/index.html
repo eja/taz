@@ -29,20 +29,24 @@
 			</ol>
 		</nav>
 		<div class="action-buttons">
-			{{if .IsAuthenticated}}
+			{{if or (not .PasswordProtected) .IsAuthenticated}}
 			<button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#createDirModal" title="Create Directory">
 		        <i class="bi bi-folder-plus"></i>
 			</button>
 			<button class="btn btn-sm btn-outline-success" onclick="document.getElementById('fileInput').click();" title="Upload File">
 		        <i class="bi bi-upload"></i>
 			</button>
-	        <a href="/logout?path={{.CurrentPath}}" class="btn btn-sm btn-outline-secondary" title="Logout">
-			    <i class="bi bi-box-arrow-right"></i>
-		    </a>
-			{{else if .PasswordProtected}}
-			<button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#loginModal" title="Login">
-			    <i class="bi bi-lock"></i>
-		    </button>
+            {{end}}
+            {{if .PasswordProtected}}
+                {{if .IsAuthenticated}}
+                <a href="/logout?path={{.CurrentPath}}" class="btn btn-sm btn-outline-secondary" title="Logout">
+			        <i class="bi bi-box-arrow-right"></i>
+		        </a>
+                {{else}} 
+			    <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#loginModal" title="Login">
+			        <i class="bi bi-lock"></i>
+		        </button>
+                {{end}}
 			{{end}}
 		</div>
 	</div>
@@ -68,12 +72,6 @@
 			<td class="text-end"><a href="{{.URL}}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-info" title="Open Link"><i class="bi bi-box-arrow-up-right"></i></a></td>
 		</tr>
 		{{end}}
-        {{if .ParentPath}}
-        <tr>
-            <td><i class="bi bi-arrow-90deg-up icon text-secondary"></i></td>
-            <td colspan="4"><a href="/?path={{.ParentPath}}">.. (Up)</a></td>
-        </tr>
-        {{end}}
         {{range .Files}}
         <tr>
             <td>
@@ -88,7 +86,7 @@
                 {{if not .Isdir}}
                 <a href="/download?file={{urlencode .Path}}" class="btn btn-sm btn-outline-success" title="Download"><i class="bi bi-download"></i></a>
                 {{end}}
-                {{if $.IsAuthenticated}}
+                {{if or (not $.PasswordProtected) $.IsAuthenticated}}
                 <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#renameModal" data-bs-path="{{.Path}}" data-bs-name="{{.Name}}" title="Rename"><i class="bi bi-pencil-square"></i></button>
                 <form action="/" method="post" class="action-form">
                     <input type="hidden" name="action" value="delete"><input type="hidden" name="path" value="{{$.CurrentPath}}"><input type="hidden" name="item" value="{{.Path}}">
@@ -108,7 +106,7 @@
 
 <form id="uploadForm" action="/" method="post" enctype="multipart/form-data" class="d-none">
     <input type="hidden" name="action" value="upload"><input type="hidden" name="path" value="{{.CurrentPath}}">
-    <input type="file" name="file" id="fileInput" onchange="document.getElementById('uploadForm').submit();">
+    <input type="file" name="files" id="fileInput" multiple onchange="document.getElementById('uploadForm').submit();">
 </form>
 
 <div class="modal fade" id="loginModal" tabindex="-1">

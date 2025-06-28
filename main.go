@@ -375,30 +375,46 @@ func renderPage(w http.ResponseWriter, r *http.Request, absPath, relativePath st
 }
 
 func handleUpload(r *http.Request, destPath string) (string, string) {
-	file, handler, err := r.FormFile("file")
-	if err != nil {
-		return "", "Failed to get file from form."
-	}
-	defer file.Close()
-
-	if handler.Filename == "" {
-		return "", "No file selected."
-	}
-	cleanFilename := filepath.Base(handler.Filename)
-	appLogger.Printf("UPLOAD by %s: uploading '%s' to '%s'", r.RemoteAddr, cleanFilename, destPath)
-	if strings.ContainsAny(cleanFilename, `/\:*?"<>|`) {
-		return "", "Filename contains invalid characters."
+	form := r.MultipartForm
+	if form == nil {
+		return "", "No files uploaded."
 	}
 
-	destFile, err := os.Create(filepath.Join(destPath, cleanFilename))
-	if err != nil {
-		return "", "Could not create file on server."
+	files := form.File["files"]
+	if len(files) == 0 {
+		return "", "No files selected."
 	}
-	defer destFile.Close()
-	if _, err := io.Copy(destFile, file); err != nil {
-		return "", "Failed to save file."
+
+	var uploadedFiles []string
+	for _, handler := range files {
+		srcFile, err := handler.Open()
+		if err != nil {
+			return "", fmt.Sprintf("Failed to open file '%s'.", handler.Filename)
+		}
+		defer srcFile.Close()
+
+		cleanFilename := filepath.Base(handler.Filename)
+		if strings.ContainsAny(cleanFilename, `/\:*?"<>|`) {
+			continue
+		}
+
+		destFile, err := os.Create(filepath.Join(destPath, cleanFilename))
+		if err != nil {
+			return "", fmt.Sprintf("Could not create file '%s' on server.", cleanFilename)
+		}
+		defer destFile.Close()
+
+		if _, err := io.Copy(destFile, srcFile); err != nil {
+			return "", fmt.Sprintf("Failed to save file '%s'.", cleanFilename)
+		}
+		uploadedFiles = append(uploadedFiles, cleanFilename)
 	}
-	return fmt.Sprintf("File '%s' uploaded.", cleanFilename), ""
+
+	if len(uploadedFiles) == 0 {
+		return "", "No valid files were uploaded."
+	}
+
+	return fmt.Sprintf("Uploaded: %s", strings.Join(uploadedFiles, ", ")), ""
 }
 
 func handleMkdir(r *http.Request, currentPath string) (string, string) {

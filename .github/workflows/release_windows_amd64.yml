@@ -23,7 +23,10 @@ jobs:
       - name: Build and create archive
         run: |
             make
-            
+
+      - name: List files after build
+        run: Get-ChildItem -Recurse
+    
       - name: Compress artifact
         run: Compress-Archive -Path ${{ env.ASSET_FILES }} -DestinationPath ${{ env.ASSET_NAME }}
 

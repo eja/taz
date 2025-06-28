@@ -17,7 +17,7 @@ jobs:
         
       - name: Build and create archive
         run: |
-            make static 
+            make 
             tar -czvf ${{ env.ASSET_NAME }} ${{ env.ASSET_FILES }}
 
       - name: Upload release asset

@@ -24,9 +24,10 @@ jobs:
         run: |
             make
 
-      - name: List files after build
-        run: Get-ChildItem -Recurse
-    
+      - name: Rename binary to .exe
+        run: |
+          if (Test-Path .\taz) { Move-Item -Path .\taz -Destination .\taz.exe }
+
       - name: Compress artifact
         run: Compress-Archive -Path ${{ env.ASSET_FILES }} -DestinationPath ${{ env.ASSET_NAME }}
 

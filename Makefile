@@ -10,7 +10,7 @@ clean:
 	@rm -f taz taz.exe
 
 lint:
-	@gofmt -w .
+	@gofmt -w ./app
 
 taz:
-	@CGO_ENABLED=0 go build -ldflags "-s -w" -o taz .
+	@CGO_ENABLED=0 go build -ldflags "-s -w" -o taz ./app

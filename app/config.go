@@ -3,6 +3,7 @@
 package main
 
 import (
+	"database/sql"
 	"embed"
 	"flag"
 	"html/template"
@@ -28,7 +29,9 @@ var (
 	rootPath   = flag.String("root", "files", "The root directory for file management")
 	logEnabled = flag.Bool("log", false, "Enable logging")
 	logFile    = flag.String("log-file", "", "Path to the log file")
+	bbsPath    = flag.String("bbs", "", "Path to the BBS database (default: disabled)")
 	urlList    stringSlice
 )
 
 var externalLinks []ExternalLink
+var db *sql.DB

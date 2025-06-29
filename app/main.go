@@ -3,10 +3,12 @@
 package main
 
 import (
+	"database/sql"
 	"flag"
 	"fmt"
 	"io"
 	"log"
+	_ "modernc.org/sqlite"
 	"net/http"
 	"os"
 	"strings"
@@ -47,6 +49,23 @@ func main() {
 
 	if err := os.MkdirAll(*rootPath, os.ModePerm); err != nil {
 		log.Fatalf("Failed to create root directory '%s': %v", *rootPath, err)
+	}
+
+	if *bbsPath != "" {
+		var err error
+		db, err = sql.Open("sqlite", *bbsPath)
+		if err != nil {
+			log.Fatalf("Failed to connect to BBS database: %v", err)
+		}
+
+		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS bbs_messages (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		message TEXT NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	)`)
+		if err != nil {
+			log.Fatalf("Failed to create BBS table: %v", err)
+		}
 	}
 
 	setupTemplates()

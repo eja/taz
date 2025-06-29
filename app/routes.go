@@ -21,4 +21,6 @@ func setupRoutes() {
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/logout", logoutHandler)
 	http.HandleFunc("/edit", editHandler)
+	http.HandleFunc("/bbs", bbsHandler)
+
 }

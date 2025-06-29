@@ -91,6 +91,7 @@ func renderPage(w http.ResponseWriter, r *http.Request, absPath, relativePath st
 		Error:             r.URL.Query().Get("err"),
 		PasswordProtected: *password != "",
 		IsAuthenticated:   isAuthenticated,
+		HasBBS:            db != nil,
 	}
 	if relativePath == "." || relativePath == "" {
 		data.ExternalLinks = externalLinks

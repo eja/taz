@@ -40,6 +40,7 @@ type PageData struct {
 	PasswordProtected bool
 	IsAuthenticated   bool
 	ExternalLinks     []ExternalLink
+	HasBBS            bool
 }
 
 type EditPageData struct {
@@ -47,4 +48,20 @@ type EditPageData struct {
 	Path       string
 	ParentPath string
 	Content    string
+}
+
+type BBSMessage struct {
+	ID        int
+	Message   string
+	CreatedAt string
+}
+
+type BBSPageData struct {
+	Title       string
+	Messages    []BBSMessage
+	CurrentPage int
+	TotalPages  int
+	HasPrevious bool
+	HasNext     bool
+	Pages       []int
 }

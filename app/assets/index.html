@@ -29,6 +29,11 @@
 			</ol>
 		</nav>
 		<div class="action-buttons">
+            {{if .HasBBS}}
+			<a href="/bbs" class="btn btn-sm btn-outline-secondary" title="BBS">
+				<i class="bi bi-chat-left-text"></i>
+			</a>
+            {{end}}
 			{{if or (not .PasswordProtected) .IsAuthenticated}}
 			<button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#createDirModal" title="Create Directory">
 				<i class="bi bi-folder-plus"></i>

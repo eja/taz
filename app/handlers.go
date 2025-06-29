@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
+	"strings"
 )
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -139,4 +141,95 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.ServeFile(w, r, absPath)
+}
+
+func bbsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		requireAuth(handleBBSPost, true)(w, r)
+		return
+	}
+	if db == nil {
+		return
+	}
+	handleBBSGet(w, r)
+}
+
+func handleBBSGet(w http.ResponseWriter, r *http.Request) {
+	page := 1
+	if p := r.URL.Query().Get("page"); p != "" {
+		if parsedPage, err := strconv.Atoi(p); err == nil && parsedPage > 0 {
+			page = parsedPage
+		}
+	}
+
+	const messagesPerPage = 10
+	offset := (page - 1) * messagesPerPage
+
+	var totalMessages int
+	err := db.QueryRow("SELECT COUNT(*) FROM bbs_messages").Scan(&totalMessages)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	rows, err := db.Query("SELECT id, message, created_at FROM bbs_messages ORDER BY created_at DESC LIMIT ? OFFSET ?", messagesPerPage, offset)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var messages []BBSMessage
+	for rows.Next() {
+		var msg BBSMessage
+		if err := rows.Scan(&msg.ID, &msg.Message, &msg.CreatedAt); err != nil {
+			continue
+		}
+		messages = append(messages, msg)
+	}
+
+	totalPages := (totalMessages + messagesPerPage - 1) / messagesPerPage
+	if totalPages == 0 {
+		totalPages = 1
+	}
+
+	pages := make([]int, totalPages)
+	for i := 0; i < totalPages; i++ {
+		pages[i] = i + 1
+	}
+
+	data := BBSPageData{
+		Title:       "BBS Messages",
+		Messages:    messages,
+		CurrentPage: page,
+		TotalPages:  totalPages,
+		HasPrevious: page > 1,
+		HasNext:     page < totalPages,
+		Pages:       pages,
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	templates.ExecuteTemplate(w, "bbs.html", data)
+}
+
+func handleBBSPost(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Error parsing form", http.StatusInternalServerError)
+		return
+	}
+
+	message := strings.TrimSpace(r.FormValue("message"))
+	if message == "" {
+		http.Redirect(w, r, "/bbs", http.StatusSeeOther)
+		return
+	}
+
+	_, err := db.Exec("INSERT INTO bbs_messages (message) VALUES (?)", message)
+	if err != nil {
+		appLogger.Printf("Failed to save BBS message: %v", err)
+	} else {
+		appLogger.Printf("BBS message posted by %s", r.RemoteAddr)
+	}
+
+	http.Redirect(w, r, "/bbs", http.StatusSeeOther)
 }

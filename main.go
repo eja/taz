@@ -21,10 +21,10 @@ import (
 	"strings"
 )
 
-//go:embed assets
+//go:embed assets/*
 var embeddedAssets embed.FS
 
-var assetsFS fs.FS
+var templates *template.Template
 var appLogger *log.Logger
 
 type stringSlice []string
@@ -41,7 +41,7 @@ func (i *stringSlice) Set(value string) error {
 const (
 	sessionCookie = "taz_auth"
 	appLabel      = "TAZ File Manager"
-	appVersion    = "1.6.28"
+	appVersion    = "1.6.29"
 )
 
 var (
@@ -81,12 +81,18 @@ type PageData struct {
 	ExternalLinks     []ExternalLink
 }
 
+type EditPageData struct {
+	Title      string
+	Path       string
+	ParentPath string
+	Content    string
+}
+
 var templateFuncs = template.FuncMap{
-	"split":     func(s string) []string { return strings.Split(s, "/") },
-	"join":      func(s []string) string { return strings.Join(s, "/") },
-	"slice":     func(s []string, i, j int) []string { return s[i:j] },
-	"add":       func(i, j int) int { return i + j },
-	"urlencode": func(s string) string { return url.QueryEscape(s) },
+	"split": func(s string) []string { return strings.Split(s, "/") },
+	"join":  func(s []string) string { return strings.Join(s, "/") },
+	"slice": func(s []string, i, j int) []string { return s[i:j] },
+	"add":   func(i, j int) int { return i + j },
 }
 
 func main() {
@@ -126,17 +132,18 @@ func main() {
 		log.Fatalf("Failed to create root directory '%s': %v", *rootPath, err)
 	}
 
-	var err error
-	assetsFS, err = fs.Sub(embeddedAssets, "assets")
+	assetsFS, err := fs.Sub(embeddedAssets, "assets")
 	if err != nil {
 		log.Fatalf("Failed to create sub FS for assets: %v", err)
 	}
+	templates = template.Must(template.New("").Funcs(templateFuncs).ParseFS(assetsFS, "*.html"))
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(assetsFS))))
 
 	http.HandleFunc("/", fileManagerHandler)
 	http.HandleFunc("/download", downloadHandler)
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/logout", logoutHandler)
+	http.HandleFunc("/edit", editHandler)
 
 	appLogger.Printf("Starting TAZ file manager on http://%s", addr)
 	if err := http.ListenAndServe(addr, nil); err != nil {
@@ -163,7 +170,16 @@ func requireAuth(next http.HandlerFunc, requireWrite bool) http.HandlerFunc {
 		if requireWrite {
 			cookie, err := r.Cookie(sessionCookie)
 			if err != nil || !isCookieValid(cookie.Value) {
-				http.Redirect(w, r, "/?path="+url.QueryEscape(r.URL.Query().Get("path")), http.StatusSeeOther)
+				returnPath := r.URL.Query().Get("path")
+				if fileParam := r.URL.Query().Get("file"); fileParam != "" {
+					dir := filepath.Dir(fileParam)
+					if dir == "." {
+						returnPath = ""
+					} else {
+						returnPath = filepath.ToSlash(dir)
+					}
+				}
+				http.Redirect(w, r, "/?path="+url.QueryEscape(returnPath), http.StatusSeeOther)
 				return
 			}
 		}
@@ -270,6 +286,11 @@ func handlePostRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	action := r.FormValue("action")
+	if action == "createtxt" {
+		handleCreateTxt(w, r, absPath)
+		return
+	}
+
 	var message, errorMsg string
 	switch action {
 	case "upload":
@@ -285,6 +306,57 @@ func handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		template.URLQueryEscaper(relativePath),
 		template.URLQueryEscaper(message),
 		template.URLQueryEscaper(errorMsg),
+	)
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
+
+func editHandler(w http.ResponseWriter, r *http.Request) {
+	requireAuth(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			handleSaveFile(w, r)
+		} else {
+			handleShowEditor(w, r)
+		}
+	}, true)(w, r)
+}
+
+func handleShowEditor(w http.ResponseWriter, r *http.Request) {
+	relativePath := r.URL.Query().Get("file")
+	safePath, err := getSafePath(relativePath)
+	if err != nil {
+		http.Error(w, "Invalid file path", http.StatusBadRequest)
+		return
+	}
+
+	content, err := os.ReadFile(safePath)
+	if err != nil {
+		http.Error(w, "Could not read file", http.StatusInternalServerError)
+		return
+	}
+
+	data := EditPageData{
+		Title:      "Edit " + filepath.Base(relativePath),
+		Path:       relativePath,
+		ParentPath: filepath.ToSlash(filepath.Dir(relativePath)),
+		Content:    string(content),
+	}
+	templates.ExecuteTemplate(w, "edit.html", data)
+}
+
+func handleSaveFile(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	relativePath := r.FormValue("path")
+	content := r.FormValue("content")
+	safePath, err := getSafePath(relativePath)
+	if err != nil {
+		http.Error(w, "Invalid file path", http.StatusBadRequest)
+		return
+	}
+
+	os.WriteFile(safePath, []byte(content), 0644)
+	redirectURL := fmt.Sprintf("/?path=%s&msg=%s",
+		url.QueryEscape(filepath.ToSlash(filepath.Dir(relativePath))),
+		url.QueryEscape("Saved "+filepath.Base(relativePath)),
 	)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
@@ -364,14 +436,8 @@ func renderPage(w http.ResponseWriter, r *http.Request, absPath, relativePath st
 		data.ExternalLinks = externalLinks
 	}
 
-	t, err := template.New("index.html").Funcs(templateFuncs).ParseFS(assetsFS, "index.html")
-	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		log.Fatalf("Template parsing error: %v", err)
-		return
-	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	t.Execute(w, data)
+	templates.ExecuteTemplate(w, "index.html", data)
 }
 
 func handleUpload(r *http.Request, destPath string) (string, string) {
@@ -431,6 +497,31 @@ func handleMkdir(r *http.Request, currentPath string) (string, string) {
 		return "", "Failed to create directory."
 	}
 	return fmt.Sprintf("Directory '%s' created.", dirName), ""
+}
+
+func handleCreateTxt(w http.ResponseWriter, r *http.Request, currentPath string) {
+	fileName := r.FormValue("filename")
+	currentRelPath := r.FormValue("path")
+	appLogger.Printf("CREATETXT by %s: creating file '%s' in '%s'", r.RemoteAddr, fileName, currentPath)
+
+	var redirectURL string
+	if fileName == "" || strings.ContainsAny(fileName, `/\:*?"<>|`) {
+		errorMsg := "Invalid or empty file name."
+		redirectURL = fmt.Sprintf("/?path=%s&err=%s", url.QueryEscape(currentRelPath), url.QueryEscape(errorMsg))
+	} else {
+		filePath := filepath.Join(currentPath, fileName)
+		if _, err := os.Stat(filePath); err == nil {
+			errorMsg := fmt.Sprintf("File '%s' already exists.", fileName)
+			redirectURL = fmt.Sprintf("/?path=%s&err=%s", url.QueryEscape(currentRelPath), url.QueryEscape(errorMsg))
+		} else if file, err := os.Create(filePath); err != nil {
+			errorMsg := "Failed to create file."
+			redirectURL = fmt.Sprintf("/?path=%s&err=%s", url.QueryEscape(currentRelPath), url.QueryEscape(errorMsg))
+		} else {
+			file.Close()
+			redirectURL = fmt.Sprintf("/edit?file=%s", url.QueryEscape(filepath.ToSlash(filepath.Join(currentRelPath, fileName))))
+		}
+	}
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
 func handleDelete(r *http.Request) (string, string) {

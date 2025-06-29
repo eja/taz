@@ -30,20 +30,23 @@
 		</nav>
 		<div class="action-buttons">
 			{{if or (not .PasswordProtected) .IsAuthenticated}}
-			<button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#createDirModal" title="Create Directory">
-		        <i class="bi bi-folder-plus"></i>
+			<button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#createDirModal" title="Create Directory">
+				<i class="bi bi-folder-plus"></i>
 			</button>
-			<button class="btn btn-sm btn-outline-success" onclick="document.getElementById('fileInput').click();" title="Upload File">
+			<button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#createTxtModal" title="Create Text File">
+				<i class="bi bi-file-earmark-plus"></i>
+			</button>
+			<button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('fileInput').click();" title="Upload File">
 		        <i class="bi bi-upload"></i>
 			</button>
             {{end}}
             {{if .PasswordProtected}}
                 {{if .IsAuthenticated}}
-                <a href="/logout?path={{.CurrentPath}}" class="btn btn-sm btn-outline-secondary" title="Logout">
+                <a href="/logout?path={{.CurrentPath}}" class="btn btn-sm btn-outline-danger" title="Logout">
 			        <i class="bi bi-box-arrow-right"></i>
 		        </a>
                 {{else}} 
-			    <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#loginModal" title="Login">
+			    <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#loginModal" title="Login">
 			        <i class="bi bi-lock"></i>
 		        </button>
                 {{end}}
@@ -69,13 +72,13 @@
 		<tr>
 			<td><i class="bi bi-link-45deg icon text-info"></i></td>
 			<td colspan="3"><a href="{{.URL}}" target="_blank" rel="noopener noreferrer">{{.Name}}</a></td>
-			<td class="text-end"><a href="{{.URL}}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-info" title="Open Link"><i class="bi bi-box-arrow-up-right"></i></a></td>
+			<td class="text-end"><a href="{{.URL}}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary" title="Open Link"><i class="bi bi-box-arrow-up-right"></i></a></td>
 		</tr>
 		{{end}}
         {{range .Files}}
         <tr>
             <td>
-                {{if .Isdir}}<i class="bi bi-folder-fill text-warning icon"></i>{{else}}<i class="bi bi-file-earmark-text text-secondary icon"></i>{{end}}
+                {{if .Isdir}}<i class="bi bi-folder-fill text-warning icon"></i>{{else}}<i class="bi bi-file-earmark-text text-info icon"></i>{{end}}
             </td>
             <td>
                 {{if .Isdir}}<a href="/?path={{.Path}}">{{.Name}}</a>{{else}}{{.Name}}{{end}}
@@ -84,16 +87,19 @@
             <td>{{.ModTime}}</td>
             <td class="text-end">
                 {{if not .Isdir}}
-                <a href="/download?file={{urlencode .Path}}" class="btn btn-sm btn-outline-success" title="Download"><i class="bi bi-download"></i></a>
+                <a href="/download?file={{.Path}}" class="btn btn-sm btn-outline-secondary" title="Download"><i class="bi bi-download"></i></a>
                 {{end}}
                 {{if or (not $.PasswordProtected) $.IsAuthenticated}}
-                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#renameModal" data-bs-path="{{.Path}}" data-bs-name="{{.Name}}" title="Rename"><i class="bi bi-pencil-square"></i></button>
-                <form action="/" method="post" class="action-form">
-                    <input type="hidden" name="action" value="delete"><input type="hidden" name="path" value="{{$.CurrentPath}}"><input type="hidden" name="item" value="{{.Path}}">
-                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete {{.Name}}?');" title="Delete"><i class="bi bi-trash-fill"></i></button>
-                </form>
+                    {{if not .Isdir}}
+                    <a href="/edit?file={{.Path}}" class="btn btn-sm btn-outline-secondary" title="Edit"><i class="bi bi-pencil"></i></a>
+                    {{end}}
+                    <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#renameModal" data-bs-path="{{.Path}}" data-bs-name="{{.Name}}" title="Rename"><i class="bi bi-pencil-square"></i></button>
+                    <form action="/" method="post" class="action-form">
+                        <input type="hidden" name="action" value="delete"><input type="hidden" name="path" value="{{$.CurrentPath}}"><input type="hidden" name="item" value="{{.Path}}">
+                        <button type="submit" class="btn btn-sm btn-outline-warning" onclick="return confirm('Are you sure you want to delete {{.Name}}?');" title="Delete"><i class="bi bi-trash-fill"></i></button>
+                    </form>
                 {{end}}
-            </td>
+           </td>
         </tr>
         {{else}}
 		{{if not .ExternalLinks}}
@@ -157,6 +163,30 @@
   </div>
 </div>
 
+<div class="modal fade" id="createTxtModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form action="/" method="post">
+          <div class="modal-header">
+            <h5 class="modal-title">Create Text File</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" name="action" value="createtxt"><input type="hidden" name="path" value="{{.CurrentPath}}">
+            <div class="mb-3">
+              <label for="filename" class="form-label">File Name</label>
+              <input type="text" class="form-control" id="filename" name="filename" required>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-primary">Create and Edit</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
 <div class="modal fade" id="renameModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -194,3 +224,4 @@ window.setTimeout(function() {
 </script>
 </body>
 </html>
+

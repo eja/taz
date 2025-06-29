@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Edit - {{.Path}}</title>
+    <link href="/static/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .editor-container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 4rem);
+        }
+        #content {
+            flex-grow: 1;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body class="p-3">
+<div class="editor-container">
+    <form action="/edit" method="post" class="d-flex flex-column h-100">
+        <input type="hidden" name="path" value="{{.Path}}">
+        <div class="mb-2 d-flex justify-content-between align-items-center">
+            <div>Editing: <strong>{{.Path}}</strong></div>
+            <div>
+                <a href="/?path={{.ParentPath}}" class="btn btn-secondary btn-sm">Cancel</a>
+                <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+            </div>
+        </div>
+        <textarea class="form-control h-100" id="content" name="content" spellcheck="false">{{.Content}}</textarea>
+    </form>
+</div>
+</body>
+</html>
+

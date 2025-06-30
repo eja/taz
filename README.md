@@ -1,15 +1,13 @@
 # TAZ
-
  **Temporary Autonomous Zone** - A lightweight, cross-platform web-based file manager for instant file sharing and management.
 
 ## Overview
-
 TAZ is a simple, self-contained web application that allows you to quickly set up a file management interface on any supported device. Perfect for temporary file sharing, collaborative work environments, or when you need instant access to files across different devices on a network.
 
 ## Features
-
 - 🌐 **Web-based interface** - Access from any browser
 - 📁 **Full file management** - Upload, download, create folders, rename, delete
+- 💬 **BBS messaging system** - Optional bulletin board for team communication
 - 🔒 **Optional password protection** - Secure write operations
 - 🔗 **External links** - Add custom links to your file manager homepage
 - 📱 **Responsive design** - Works on desktop and mobile
@@ -20,7 +18,6 @@ TAZ is a simple, self-contained web application that allows you to quickly set u
 ## Quick Start
 
 ### Download and Run
-
 1. Download the appropriate binary for your platform from the [Releases](../../releases) page
 2. Make it executable (Unix-like systems):
    ```bash
@@ -44,10 +41,16 @@ TAZ is a simple, self-contained web application that allows you to quickly set u
 ./taz -password mypassword -web-port 8080
 ```
 
-#### With external links and logging
+#### With BBS messaging system
+```bash
+./taz -bbs messages.db -password secret
+```
+
+#### Full-featured setup with BBS, external links and logging
 ```bash
 ./taz \
   -password secret \
+  -bbs team-messages.db \
   -url "Documentation|https://example.com/docs" \
   -url "Team Chat|https://chat.example.com" \
   -log \
@@ -67,14 +70,30 @@ TAZ is a simple, self-contained web application that allows you to quickly set u
 | `-web-port` | `35248` | Port for the web server |
 | `-password` | (empty) | Password for write operations |
 | `-root` | `files` | Root directory for file management |
+| `-bbs` | (empty) | Path to SQLite database for BBS messaging (disabled if not provided) |
 | `-log` | `false` | Enable request logging |
 | `-log-file` | (empty) | Path to log file (uses stderr if empty) |
 | `-url` | (none) | External links (format: `Name\|URL`) |
 
+### BBS Messaging System
+The BBS (Bulletin Board System) feature provides a simple messaging interface for team communication:
+
+- **Enable BBS**: Use the `-bbs` flag with a database file path (e.g., `-bbs messages.db`)
+- **Database**: Uses SQLite to store messages persistently
+- **Default behavior**: BBS is disabled when no database path is provided
+- **Access**: Available through the web interface alongside file management
+
+Example BBS usage:
+```bash
+# Enable BBS with custom database
+./taz -bbs team-board.db -password mypassword
+
+# BBS disabled (default behavior)
+./taz -root /shared/files
+```
+
 ### External Links
-
 You can add custom links to the homepage using the `-url` flag multiple times:
-
 ```bash
 ./taz \
   -url "Company Intranet|http://intranet.company.com" \
@@ -83,7 +102,6 @@ You can add custom links to the homepage using the `-url` flag multiple times:
 ```
 
 ## Building from Source
-
 ```bash
 git clone https://github.com/eja/taz.git
 cd taz

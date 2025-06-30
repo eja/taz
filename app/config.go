@@ -19,7 +19,7 @@ var embeddedAssets embed.FS
 const (
 	sessionCookie = "taz_auth"
 	appLabel      = "TAZ File Manager"
-	appVersion    = "1.6.29"
+	appVersion    = "1.6.30"
 )
 
 var (

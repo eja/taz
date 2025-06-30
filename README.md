@@ -43,7 +43,7 @@ TAZ is a simple, self-contained web application that allows you to quickly set u
 
 #### With BBS messaging system
 ```bash
-./taz -bbs messages.db -password secret
+./taz -bbs messages.db
 ```
 
 #### Full-featured setup with BBS, external links and logging
@@ -86,7 +86,7 @@ The BBS (Bulletin Board System) feature provides a simple messaging interface fo
 Example BBS usage:
 ```bash
 # Enable BBS with custom database
-./taz -bbs team-board.db -password mypassword
+./taz -bbs team-board.db 
 
 # BBS disabled (default behavior)
 ./taz -root /shared/files

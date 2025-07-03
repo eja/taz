@@ -14,12 +14,12 @@ import (
 )
 
 func getSafePath(relativePath string) (string, error) {
-	absPath := filepath.Join(*rootPath, relativePath)
+	absPath := filepath.Join(options.RootPath, relativePath)
 	cleanedPath, err := filepath.Abs(absPath)
 	if err != nil {
 		return "", err
 	}
-	rootAbs, _ := filepath.Abs(*rootPath)
+	rootAbs, _ := filepath.Abs(options.RootPath)
 	if !strings.HasPrefix(cleanedPath, rootAbs) {
 		return "", fmt.Errorf("invalid path: access denied")
 	}
@@ -89,7 +89,7 @@ func renderPage(w http.ResponseWriter, r *http.Request, absPath, relativePath st
 		Files:             files,
 		Message:           r.URL.Query().Get("msg"),
 		Error:             r.URL.Query().Get("err"),
-		PasswordProtected: *password != "",
+		PasswordProtected: options.Password != "",
 		IsAuthenticated:   isAuthenticated,
 		HasBBS:            db != nil,
 	}

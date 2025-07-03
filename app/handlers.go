@@ -20,7 +20,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	r.ParseForm()
 	pass := r.FormValue("password")
-	if subtle.ConstantTimeCompare([]byte(pass), []byte(*password)) == 1 {
+	if subtle.ConstantTimeCompare([]byte(pass), []byte(options.Password)) == 1 {
 		appLogger.Printf("Successful login from %s", r.RemoteAddr)
 		http.SetCookie(w, &http.Cookie{
 			Name:     sessionCookie,

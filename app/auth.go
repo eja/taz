@@ -12,17 +12,17 @@ import (
 )
 
 func getPasswordHash() string {
-	if *password == "" {
+	if options.Password == "" {
 		return ""
 	}
 	hasher := sha256.New()
-	hasher.Write([]byte(*password))
+	hasher.Write([]byte(options.Password))
 	return fmt.Sprintf("%x", hasher.Sum(nil))
 }
 
 func requireAuth(next http.HandlerFunc, requireWrite bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if *password == "" {
+		if options.Password == "" {
 			next(w, r)
 			return
 		}
@@ -47,7 +47,7 @@ func requireAuth(next http.HandlerFunc, requireWrite bool) http.HandlerFunc {
 }
 
 func isCookieValid(token string) bool {
-	if *password == "" {
+	if options.Password == "" {
 		return false
 	}
 	expectedToken := getPasswordHash()

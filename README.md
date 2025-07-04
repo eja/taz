@@ -46,7 +46,7 @@ TAZ is a simple, self-contained web application that allows you to quickly set u
 ./taz -bbs messages.db
 ```
 
-#### Full-featured setup with BBS, external links and logging
+#### Full-featured setup with command-line flags
 ```bash
 ./taz \
   -password secret \
@@ -55,6 +55,25 @@ TAZ is a simple, self-contained web application that allows you to quickly set u
   -url "Team Chat|https://chat.example.com" \
   -log \
   -log-file access.log
+```
+
+#### Using a configuration file
+Create a `config.json` file with your settings:
+```json
+{
+  "password": "secret",
+  "bbs": "team-messages.db",
+  "url": [
+    "Documentation|https://example.com/docs",
+    "Team Chat|https://chat.example.com"
+  ],
+  "log": true,
+  "log_file": "access.log"
+}
+```
+Then run TAZ, pointing it to your config file:
+```bash
+./taz -config config.json
 ```
 
 #### Listen on all interfaces
@@ -73,7 +92,41 @@ TAZ is a simple, self-contained web application that allows you to quickly set u
 | `-bbs` | (empty) | Path to SQLite database for BBS messaging (disabled if not provided) |
 | `-log` | `false` | Enable request logging |
 | `-log-file` | (empty) | Path to log file (uses stderr if empty) |
-| `-url` | (none) | External links (format: `Name\|URL`) |
+| `-url` | (none) | External links (format: `Name\|URL`), can be used multiple times |
+| `-config` | (empty) | Path to a JSON configuration file. See details below. |
+
+### Using a Configuration File (`-config`)
+For complex setups, you can manage all command-line options using a JSON configuration file. This is useful for creating reusable and easily shareable configurations.
+
+To use a configuration file, pass its path to the `-config` flag:
+```bash
+./taz -config my_settings.json
+```
+
+In the JSON file, the option names are the same as the command-line flags, but with hyphens (`-`) replaced by underscores (`_`).
+
+**Example `config.json`:**
+```json
+{
+  "web_host": "0.0.0.0",
+  "web_port": 8080,
+  "password": "secret",
+  "root": "/shared/team-files",
+  "bbs": "team-board.db",
+  "log": true,
+  "log_file": "taz_access.log",
+  "url": [
+    "Documentation|https://example.com/docs",
+    "Team Chat|https://chat.example.com"
+  ]
+}
+```
+
+**Note:** Any options passed directly on the command line will override the values specified in the configuration file. For example:
+```bash
+# The web port will be 9090, overriding the value in the config file.
+./taz -config config.json -web-port 9090
+```
 
 ### BBS Messaging System
 The BBS (Bulletin Board System) feature provides a simple messaging interface for team communication:

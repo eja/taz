@@ -52,6 +52,8 @@ func main() {
 		}
 	}
 
+	startNetworkServices()
+
 	setupTemplates()
 	setupRoutes()
 

@@ -44,7 +44,7 @@ jobs:
           mkdir -p dist
           EXT=""
           if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
-          go build -ldflags="-s -w" -o dist/taz${EXT} .
+          go build -ldflags="-s -w" -o dist/taz${EXT} ./app
 
       - name: Archive
         run: |

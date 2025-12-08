@@ -7,10 +7,11 @@ GOPATH ?= '$(HOME)/go'
 all: lint taz
 
 clean:
-	@rm -f taz taz.exe
+	@rm -rf build
 
 lint:
 	@gofmt -w ./app
 
 taz:
-	@CGO_ENABLED=0 go build -ldflags "-s -w" -o taz ./app
+	@mkdir -p build
+	@CGO_ENABLED=0 go build -ldflags "-s -w" -o build/taz ./app

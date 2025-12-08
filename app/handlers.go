@@ -1,9 +1,11 @@
-// Copyright (C) 2025 by Ubaldo Porcheddu <ubaldo@eja.it>
+// Copyright (C) by Ubaldo Porcheddu <ubaldo@eja.it>
 
 package main
 
 import (
+	"bufio"
 	"crypto/subtle"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -11,6 +13,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -148,7 +151,8 @@ func bbsHandler(w http.ResponseWriter, r *http.Request) {
 		requireAuth(handleBBSPost, true)(w, r)
 		return
 	}
-	if db == nil {
+	if options.BBSPath == "" {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 	handleBBSGet(w, r)
@@ -162,35 +166,47 @@ func handleBBSGet(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	const messagesPerPage = 10
-	offset := (page - 1) * messagesPerPage
-
-	var totalMessages int
-	err := db.QueryRow("SELECT COUNT(*) FROM bbs_messages").Scan(&totalMessages)
-	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
-		return
-	}
-
-	rows, err := db.Query("SELECT id, message, created_at FROM bbs_messages ORDER BY created_at DESC LIMIT ? OFFSET ?", messagesPerPage, offset)
-	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
 	var messages []BBSMessage
-	for rows.Next() {
-		var msg BBSMessage
-		if err := rows.Scan(&msg.ID, &msg.Message, &msg.CreatedAt); err != nil {
-			continue
+
+	file, err := os.Open(options.BBSPath)
+	if err == nil {
+		defer file.Close()
+		scanner := bufio.NewScanner(file)
+		idCounter := 1
+		for scanner.Scan() {
+			var msg BBSMessage
+			if err := json.Unmarshal(scanner.Bytes(), &msg); err == nil {
+				msg.ID = idCounter
+				messages = append(messages, msg)
+				idCounter++
+			}
 		}
-		messages = append(messages, msg)
 	}
 
+	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+		messages[i], messages[j] = messages[j], messages[i]
+	}
+
+	const messagesPerPage = 10
+	totalMessages := len(messages)
 	totalPages := (totalMessages + messagesPerPage - 1) / messagesPerPage
 	if totalPages == 0 {
 		totalPages = 1
+	}
+
+	if page > totalPages {
+		page = totalPages
+	}
+
+	start := (page - 1) * messagesPerPage
+	end := start + messagesPerPage
+	if end > totalMessages {
+		end = totalMessages
+	}
+
+	var displayedMessages []BBSMessage
+	if start < totalMessages {
+		displayedMessages = messages[start:end]
 	}
 
 	pages := make([]int, totalPages)
@@ -200,7 +216,7 @@ func handleBBSGet(w http.ResponseWriter, r *http.Request) {
 
 	data := BBSPageData{
 		Title:       "BBS Messages",
-		Messages:    messages,
+		Messages:    displayedMessages,
 		CurrentPage: page,
 		TotalPages:  totalPages,
 		HasPrevious: page > 1,
@@ -218,16 +234,36 @@ func handleBBSPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	message := strings.TrimSpace(r.FormValue("message"))
-	if message == "" {
+	messageContent := strings.TrimSpace(r.FormValue("message"))
+	if messageContent == "" {
 		http.Redirect(w, r, "/bbs", http.StatusSeeOther)
 		return
 	}
 
-	_, err := db.Exec("INSERT INTO bbs_messages (message) VALUES (?)", message)
+	msg := BBSMessage{
+		Message:   messageContent,
+		CreatedAt: time.Now().Format("2006-01-02 15:04:05"),
+	}
+
+	msgBytes, err := json.Marshal(msg)
 	if err != nil {
-		appLogger.Printf("Failed to save BBS message: %v", err)
+		appLogger.Printf("Failed to marshal BBS message: %v", err)
+		http.Redirect(w, r, "/bbs", http.StatusSeeOther)
+		return
+	}
+
+	f, err := os.OpenFile(options.BBSPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		appLogger.Printf("Failed to open BBS file: %v", err)
+		http.Error(w, "Storage error", http.StatusInternalServerError)
+		return
+	}
+	defer f.Close()
+
+	if _, err := f.Write(msgBytes); err != nil {
+		appLogger.Printf("Failed to write BBS message: %v", err)
 	} else {
+		f.WriteString("\n")
 		appLogger.Printf("BBS message posted by %s", r.RemoteAddr)
 	}
 

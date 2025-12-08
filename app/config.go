@@ -1,9 +1,8 @@
-// Copyright (C) 2025 by Ubaldo Porcheddu <ubaldo@eja.it>
+// Copyright (C) by Ubaldo Porcheddu <ubaldo@eja.it>
 
 package main
 
 import (
-	"database/sql"
 	"embed"
 	"encoding/json"
 	"flag"
@@ -16,7 +15,7 @@ import (
 const (
 	sessionCookie = "taz_auth"
 	appLabel      = "TAZ File Manager"
-	appVersion    = "1.7.3"
+	appVersion    = "1.12.8"
 )
 
 //go:embed assets
@@ -24,22 +23,24 @@ var embeddedAssets embed.FS
 
 var (
 	externalLinks []ExternalLink
-	db            *sql.DB
 	templates     *template.Template
 	appLogger     *log.Logger
 	options       Options
 	urlList       stringSlice
+	dhcpList      stringSlice
 )
 
 type Options struct {
-	WebHost    string   `json:"web_host"`
-	WebPort    int      `json:"web_port"`
-	Password   string   `json:"password"`
-	RootPath   string   `json:"root_path"`
-	LogEnabled bool     `json:"log_enabled"`
-	LogFile    string   `json:"log_file"`
-	BBSPath    string   `json:"bbs_path"`
-	URLs       []string `json:"urls"`
+	WebHost        string   `json:"web_host"`
+	WebPort        int      `json:"web_port"`
+	Password       string   `json:"password"`
+	RootPath       string   `json:"root_path"`
+	LogEnabled     bool     `json:"log_enabled"`
+	LogFile        string   `json:"log_file"`
+	BBSPath        string   `json:"bbs_path"`
+	URLs           []string `json:"urls"`
+	DHCPInterfaces []string `json:"dhcp_interfaces"`
+	DNS            string   `json:"dns"`
 }
 
 func initOptions() {
@@ -57,7 +58,9 @@ func initOptions() {
 	logEnabled := flag.Bool("log", options.LogEnabled, "Enable logging")
 	logFile := flag.String("log-file", options.LogFile, "Path to the log file")
 	bbsPath := flag.String("bbs", options.BBSPath, "Path to the BBS database (default: disabled)")
-	flag.Var(&urlList, "url", "Link to display on root page. Format: 'Name|URL'. Can be used multiple times.")
+	flag.Var(&urlList, "url", "Link to display on root page. Format: 'Name|URL'. Repeatable.")
+	flag.Var(&dhcpList, "dhcp", "DHCP interface and subnet (e.g., 'wlan0:10.35.2.0/24'). Repeatable.")
+	dns := flag.String("dns", "", "Enable DNS sinkhole. Optionally provide an upstream IP (e.g., '8.8.8.8').")
 
 	flag.Parse()
 
@@ -99,6 +102,12 @@ func initOptions() {
 	}
 	if isFlagSet["url"] {
 		options.URLs = urlList
+	}
+	if isFlagSet["dhcp"] {
+		options.DHCPInterfaces = dhcpList
+	}
+	if isFlagSet["dns"] {
+		options.DNS = *dns
 	}
 
 	for _, entry := range options.URLs {

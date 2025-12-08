@@ -1,4 +1,4 @@
-// Copyright (C) 2025 by Ubaldo Porcheddu <ubaldo@eja.it>
+// Copyright (C) by Ubaldo Porcheddu <ubaldo@eja.it>
 
 package main
 
@@ -91,7 +91,7 @@ func renderPage(w http.ResponseWriter, r *http.Request, absPath, relativePath st
 		Error:             r.URL.Query().Get("err"),
 		PasswordProtected: options.Password != "",
 		IsAuthenticated:   isAuthenticated,
-		HasBBS:            db != nil,
+		HasBBS:            options.BBSPath != "",
 	}
 	if relativePath == "." || relativePath == "" {
 		data.ExternalLinks = externalLinks

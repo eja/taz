@@ -1,13 +1,11 @@
-// Copyright (C) 2025 by Ubaldo Porcheddu <ubaldo@eja.it>
+// Copyright (C) by Ubaldo Porcheddu <ubaldo@eja.it>
 
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"io"
 	"log"
-	_ "modernc.org/sqlite"
 	"net/http"
 	"os"
 )
@@ -35,22 +33,7 @@ func main() {
 		log.Fatalf("Failed to create root directory '%s': %v", options.RootPath, err)
 	}
 
-	if options.BBSPath != "" {
-		var err error
-		db, err = sql.Open("sqlite", options.BBSPath)
-		if err != nil {
-			log.Fatalf("Failed to connect to BBS database: %v", err)
-		}
-
-		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS bbs_messages (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			message TEXT NOT NULL,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		)`)
-		if err != nil {
-			log.Fatalf("Failed to create BBS table: %v", err)
-		}
-	}
+	startNetworkServices()
 
 	setupTemplates()
 	setupRoutes()

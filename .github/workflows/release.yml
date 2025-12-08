@@ -20,12 +20,17 @@ jobs:
             goarm: 7
           - goos: windows
             goarch: amd64
+          - goos: windows
+            goarch: arm64
           - goos: darwin
             goarch: amd64
           - goos: darwin
             goarch: arm64
           - goos: android
             goarch: arm64
+          - goos: android
+            goarch: arm
+            goarm: 7
 
     steps:
       - uses: actions/checkout@v4

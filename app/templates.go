@@ -1,4 +1,4 @@
-// Copyright (C) 2025 by Ubaldo Porcheddu <ubaldo@eja.it>
+// Copyright by Ubaldo Porcheddu <ubaldo@eja.it>
 
 package main
 

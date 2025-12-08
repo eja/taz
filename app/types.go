@@ -1,4 +1,4 @@
-// Copyright (C) 2025 by Ubaldo Porcheddu <ubaldo@eja.it>
+// Copyright (C) by Ubaldo Porcheddu <ubaldo@eja.it>
 
 package main
 
@@ -51,9 +51,9 @@ type EditPageData struct {
 }
 
 type BBSMessage struct {
-	ID        int
-	Message   string
-	CreatedAt string
+	ID        int    `json:"-"`
+	Message   string `json:"message"`
+	CreatedAt string `json:"time"`
 }
 
 type BBSPageData struct {

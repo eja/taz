@@ -1,9 +1,8 @@
-// Copyright (C) 2025 by Ubaldo Porcheddu <ubaldo@eja.it>
+// Copyright (C) by Ubaldo Porcheddu <ubaldo@eja.it>
 
 package main
 
 import (
-	"database/sql"
 	"embed"
 	"encoding/json"
 	"flag"
@@ -16,7 +15,7 @@ import (
 const (
 	sessionCookie = "taz_auth"
 	appLabel      = "TAZ File Manager"
-	appVersion    = "1.7.4"
+	appVersion    = "1.12.8"
 )
 
 //go:embed assets
@@ -24,7 +23,6 @@ var embeddedAssets embed.FS
 
 var (
 	externalLinks []ExternalLink
-	db            *sql.DB
 	templates     *template.Template
 	appLogger     *log.Logger
 	options       Options

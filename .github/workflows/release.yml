@@ -26,6 +26,8 @@ jobs:
             goarch: amd64
           - goos: darwin
             goarch: arm64
+          - goos: android
+            goarch: arm64
 
     steps:
       - uses: actions/checkout@v4
@@ -52,11 +54,54 @@ jobs:
         run: |
           EXT=""
           if [ "${{ matrix.goos }}" = "windows" ]; then EXT=".exe"; fi
-          tar -C dist -czvf taz-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz taz${EXT}
+          ARCH_NAME="${{ matrix.goarch }}"
+          if [ "$ARCH_NAME" = "arm" ]; then ARCH_NAME="arm32"; fi
+          ASSET_NAME="taz-${{ matrix.goos }}-${ARCH_NAME}.tar.gz"
+          echo "ASSET_NAME=$ASSET_NAME" >> $GITHUB_ENV
+          tar -C dist -czvf $ASSET_NAME taz${EXT}
 
       - name: Upload
         uses: softprops/action-gh-release@v1
         with:
-          files: taz-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
+          files: ${{ env.ASSET_NAME }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-android-ndk:
+    name: Build android/arm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r25c
+
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.24'
+
+      - name: Build with CGO
+        env:
+          GOOS: android
+          GOARCH: arm
+          GOARM: 7
+          CGO_ENABLED: 1
+        run: |
+          mkdir -p dist
+          export CC=${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi21-clang
+          go build -ldflags="-s -w" -o dist/taz ./app
+
+      - name: Archive
+        run: |
+          tar -C dist -czvf taz-android-arm32.tar.gz taz
+
+      - name: Upload
+        uses: softprops/action-gh-release@v1
+        with:
+          files: taz-android-arm32.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

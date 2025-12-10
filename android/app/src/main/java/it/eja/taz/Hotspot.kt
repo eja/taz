@@ -38,6 +38,24 @@ class Hotspot(private val context: Context) {
         return ips
     }
 
+    private fun waitForIp(preIps: Set<String>, attempt: Int = 0, onSuccess: (String) -> Unit, onFailure: () -> Unit) {
+        val postIps = getAllIps()
+        val diff = postIps.minus(preIps)
+        val ip = diff.firstOrNull()
+
+        if (ip != null) {
+            onSuccess(ip)
+        } else {
+            if (attempt < 10) {
+                Handler(Looper.getMainLooper()).postDelayed({
+                    waitForIp(preIps, attempt + 1, onSuccess, onFailure)
+                }, 500)
+            } else {
+                onFailure()
+            }
+        }
+    }
+
     fun startHost(onSuccess: (ssid: String, pass: String, ip: String) -> Unit, onFailure: () -> Unit) {
         val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
         val preIps = getAllIps()
@@ -52,16 +70,16 @@ class Hotspot(private val context: Context) {
                         val ssid = removeQuotes(config?.SSID ?: "Unknown")
                         val pass = removeQuotes(config?.preSharedKey ?: "Unknown")
 
-                        val postIps = getAllIps()
-                        val diff = postIps.minus(preIps)
-                        val ip = diff.firstOrNull()
-
-                        if (ip != null) {
-                            onSuccess(ssid, pass, ip)
-                        } else {
-                            onFailure()
-                        }
+                        waitForIp(preIps, 0,
+                            onSuccess = { ip ->
+                                onSuccess(ssid, pass, ip)
+                            },
+                            onFailure = {
+                                onFailure()
+                            }
+                        )
                     }
+
                     override fun onFailed(reason: Int) {
                         super.onFailed(reason)
                         onFailure()

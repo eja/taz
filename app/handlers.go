@@ -143,6 +143,11 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "File not found or is a directory", http.StatusNotFound)
 		return
 	}
+
+	if strings.HasSuffix(strings.ToLower(absPath), ".apk") {
+		w.Header().Set("Content-Type", "application/vnd.android.package-archive")
+	}
+
 	http.ServeFile(w, r, absPath)
 }
 

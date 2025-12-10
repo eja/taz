@@ -13,8 +13,57 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
+
+var (
+	upgrader = websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool { return true },
+	}
+	roomClients = make(map[*websocket.Conn]bool)
+	roomMutex   = sync.Mutex{}
+)
+
+func mediaRoomHandler(w http.ResponseWriter, r *http.Request) {
+	ws, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		appLogger.Printf("WS upgrade error: %v", err)
+		return
+	}
+	defer ws.Close()
+
+	roomMutex.Lock()
+	roomClients[ws] = true
+	roomMutex.Unlock()
+
+	appLogger.Printf("Room client connected: %s", ws.RemoteAddr())
+
+	for {
+		msgType, msg, err := ws.ReadMessage()
+		if err != nil {
+			break
+		}
+
+		roomMutex.Lock()
+		for client := range roomClients {
+			if client != ws {
+				if err := client.WriteMessage(msgType, msg); err != nil {
+					client.Close()
+					delete(roomClients, client)
+				}
+			}
+		}
+		roomMutex.Unlock()
+	}
+
+	roomMutex.Lock()
+	delete(roomClients, ws)
+	roomMutex.Unlock()
+	appLogger.Printf("Room client disconnected: %s", ws.RemoteAddr())
+}
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {

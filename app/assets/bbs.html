@@ -12,9 +12,11 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>BBS</h1>
         <span>
-          <button id="audio" class="btn btn-sm btn-outline-secondary bi bi-mic-fill"></button>
+          <a href="/static/chat.html" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-headset"></i>
+          </a>
           <a href="/" class="btn btn-sm btn-outline-secondary">
-              <i class="bi bi-arrow-90deg-left"></i>
+            <i class="bi bi-arrow-90deg-left"></i>
           </a>
         </span>
     </div>
@@ -63,64 +65,5 @@
 </div>
 
 <script src="/static/bootstrap.bundle.min.js"></script>
-<script>
-const btn = document.getElementById('audio');
-let ws, ctx, stream;
-
-btn.onclick = async () => {
-    if (!ws) {
-        ctx = new (window.AudioContext || window.webkitAudioContext)();
-        try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (e) {}
-
-        ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/room');
-        ws.binaryType = 'arraybuffer';
-
-        if (stream) {
-            const src = ctx.createMediaStreamSource(stream);
-            const proc = ctx.createScriptProcessor(4096, 1, 1);
-            const mute = ctx.createGain();
-            mute.gain.value = 0;
-
-            src.connect(proc);
-            proc.connect(mute);
-            mute.connect(ctx.destination);
-
-            proc.onaudioprocess = e => {
-                if (ws.readyState === 1 && stream.getAudioTracks()[0].enabled) {
-                    ws.send(e.inputBuffer.getChannelData(0));
-                }
-            };
-            btn.classList.add('btn-outline-success');
-        } else {
-            btn.classList.remove('bi-mic-fill');
-            btn.classList.add('bi-volume-up-fill');
-        }
-
-        let nextTime = 0;
-        ws.onmessage = e => {
-            const f32 = new Float32Array(e.data);
-            const buf = ctx.createBuffer(1, f32.length, ctx.sampleRate);
-            buf.copyToChannel(f32, 0);
-            const node = ctx.createBufferSource();
-            node.buffer = buf;
-            node.connect(ctx.destination);
-            const now = ctx.currentTime;
-            nextTime = Math.max(now, nextTime);
-            node.start(nextTime);
-            nextTime += buf.duration;
-        };
-    } else if (stream) {
-        const track = stream.getAudioTracks()[0];
-        track.enabled = !track.enabled;
-        if (track.enabled) {
-            btn.classList.remove('btn-outline-danger');
-            btn.classList.add('btn-outline-success');
-        } else {
-            btn.classList.remove('btn-outline-success');
-            btn.classList.add('btn-outline-danger');
-        }
-    }
-};
-</script>
 </body>
 </html>

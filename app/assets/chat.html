@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Room</title>
+    <link href="/static/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/bootstrap-icons.css">
+</head>
+<body>
+<div class="modal fade" id="usernameModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Welcome</h5>
+            </div>
+            <div class="modal-body">
+                <form id="usernameForm">
+                    <div class="mb-3">
+                        <label for="usernameInput" class="form-label">Username:</label>
+                        <input type="text" class="form-control" id="usernameInput" placeholder="Enter username" required autofocus>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Join</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Room</h1>
+        <span>
+            <button id="micBtn" class="btn btn-sm btn-outline-secondary" disabled>
+                <i class="bi bi-mic-mute"></i>
+            </button>
+            <button id="speakerBtn" class="btn btn-sm btn-outline-secondary" disabled>
+                <i class="bi bi-volume-mute"></i>
+            </button>
+            <a href="/" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-90deg-left"></i>
+            </a>
+        </span>
+    </div>
+
+    <div id="chatMessages" class="mb-3" style="height: 300px; overflow-y: auto; border: 1px solid #dee2e6; padding: 10px; border-radius: 4px;">
+        <div class="text-center text-muted">No messages yet</div>
+    </div>
+
+    <form id="chatForm" class="mb-3">
+        <div class="input-group">
+            <input type="text" class="form-control" id="messageInput" placeholder="Type your message..." autocomplete="off" disabled>
+            <button type="submit" class="btn btn-primary" disabled>
+                <i class="bi bi-send"></i>
+            </button>
+        </div>
+    </form>
+</div>
+
+<script src="/static/bootstrap.bundle.min.js"></script>
+<script>
+let ws = null;
+let audioCtx = null;
+let audioStream = null;
+let userName = '';
+let micEnabled = false;
+let speakerEnabled = false;
+let micMuted = false;
+
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = new bootstrap.Modal(document.getElementById('usernameModal'));
+    modal.show();
+    
+    document.getElementById('usernameForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const input = document.getElementById('usernameInput');
+        userName = input.value.trim();
+        if (userName) {
+            modal.hide();
+            initializeRoom();
+        }
+    });
+});
+
+function initializeRoom() {
+    connectWebSocket();
+    setupEventListeners();
+    
+    try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        initializeMicrophone();
+    } catch (e) {}
+}
+
+function connectWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    ws = new WebSocket(protocol + window.location.host + '/room');
+    
+    ws.onopen = () => {
+        enableChatInput();
+        addMessage('System', 'Connected', 'system');
+        sendChatMessage(`${userName} joined`);
+    };
+    
+    ws.onmessage = (event) => {
+        if (typeof event.data === 'string') {
+            try {
+                const data = JSON.parse(event.data);
+                addMessage(data.sender, data.message, data.type || 'chat');
+            } catch (e) {
+                addMessage('User', event.data, 'chat');
+            }
+        } else if (speakerEnabled) {
+            const f32 = new Float32Array(event.data);
+            const buffer = audioCtx.createBuffer(1, f32.length, audioCtx.sampleRate);
+            buffer.copyToChannel(f32, 0);
+            const source = audioCtx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(audioCtx.destination);
+            source.start();
+        }
+    };
+    
+    ws.onclose = () => {
+        disableChatInput();
+        addMessage('System', 'Disconnected', 'system');
+        setTimeout(connectWebSocket, 3000);
+    };
+}
+
+async function initializeMicrophone() {
+    try {
+        const testStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        testStream.getTracks().forEach(track => track.stop());
+        
+        const micBtn = document.getElementById('micBtn');
+        micBtn.disabled = false;
+        micBtn.classList.remove('btn-outline-secondary');
+        micBtn.classList.add('btn-outline-success');
+    } catch (error) {
+        const micBtn = document.getElementById('micBtn');
+        micBtn.disabled = true;
+    }
+}
+
+function setupEventListeners() {
+    document.getElementById('chatForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        sendChatMessage();
+    });
+
+    document.getElementById('micBtn').addEventListener('click', toggleMicrophone);
+    document.getElementById('speakerBtn').addEventListener('click', toggleSpeaker);
+}
+
+async function toggleMicrophone() {
+    const micBtn = document.getElementById('micBtn');
+    
+    if (!micEnabled) {
+        try {
+            audioStream = await navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true
+                }
+            });
+            
+            const source = audioCtx.createMediaStreamSource(audioStream);
+            const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+            const muteNode = audioCtx.createGain();
+            muteNode.gain.value = 0;
+            
+            source.connect(processor);
+            processor.connect(muteNode);
+            muteNode.connect(audioCtx.destination);
+            
+            processor.onaudioprocess = (e) => {
+                if (ws && ws.readyState === WebSocket.OPEN && !micMuted) {
+                    const audioData = e.inputBuffer.getChannelData(0);
+                    ws.send(audioData);
+                }
+            };
+            
+            micEnabled = true;
+            micMuted = false;
+            micBtn.innerHTML = '<i class="bi bi-mic"></i>';
+            micBtn.classList.remove('btn-outline-success');
+            micBtn.classList.add('btn-success');
+            
+            if (!speakerEnabled) {
+                toggleSpeaker();
+            }
+            
+            addMessage('System', 'Microphone enabled', 'system');
+            
+        } catch (error) {
+            addMessage('System', 'Microphone error', 'system');
+        }
+    } else {
+        micMuted = !micMuted;
+        
+        if (micMuted) {
+            micBtn.innerHTML = '<i class="bi bi-mic-mute"></i>';
+            micBtn.classList.remove('btn-success');
+            micBtn.classList.add('btn-danger');
+            addMessage('System', 'Microphone muted', 'system');
+        } else {
+            micBtn.innerHTML = '<i class="bi bi-mic"></i>';
+            micBtn.classList.remove('btn-danger');
+            micBtn.classList.add('btn-success');
+            addMessage('System', 'Microphone unmuted', 'system');
+        }
+    }
+}
+
+function toggleSpeaker() {
+    const speakerBtn = document.getElementById('speakerBtn');
+    
+    if (!speakerEnabled) {
+        speakerEnabled = true;
+        speakerBtn.innerHTML = '<i class="bi bi-volume-up"></i>';
+        speakerBtn.classList.remove('btn-outline-secondary');
+        speakerBtn.classList.add('btn-primary');
+        
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        
+        addMessage('System', 'Speaker enabled', 'system');
+    } else {
+        speakerEnabled = false;
+        speakerBtn.innerHTML = '<i class="bi bi-volume-mute"></i>';
+        speakerBtn.classList.remove('btn-primary');
+        speakerBtn.classList.add('btn-outline-secondary');
+        
+        addMessage('System', 'Speaker disabled', 'system');
+    }
+}
+
+function sendChatMessage() {
+    const input = document.getElementById('messageInput');
+    const message = input.value.trim();
+    
+    if (!message || !ws || ws.readyState !== WebSocket.OPEN) return;
+    
+    const chatData = {
+        sender: userName,
+        message: message,
+        type: 'chat'
+    };
+    
+    ws.send(JSON.stringify(chatData));
+    addMessage('You', message, 'self');
+    input.value = '';
+    input.focus();
+}
+
+function addMessage(sender, text, type = 'chat') {
+    const messagesDiv = document.getElementById('chatMessages');
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    if (messagesDiv.children.length === 1 && messagesDiv.children[0].className.includes('text-muted')) {
+        messagesDiv.innerHTML = '';
+    }
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'mb-2';
+    
+    let badgeClass = 'bg-secondary';
+    let textClass = '';
+    
+    if (type === 'system') {
+        badgeClass = 'bg-warning';
+        textClass = 'text-muted fst-italic';
+    } else if (type === 'self') {
+        badgeClass = 'bg-primary';
+        textClass = 'text-primary';
+    }
+    
+    messageDiv.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start">
+            <span class="badge ${badgeClass}">${escapeHtml(sender)}</span>
+            <small class="text-muted">${time}</small>
+        </div>
+        <div class="${textClass}">${escapeHtml(text)}</div>
+    `;
+    
+    messagesDiv.appendChild(messageDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function enableChatInput() {
+    document.getElementById('messageInput').disabled = false;
+    document.querySelector('#chatForm button').disabled = false;
+    document.getElementById('speakerBtn').disabled = false;
+}
+
+function disableChatInput() {
+    document.getElementById('messageInput').disabled = true;
+    document.querySelector('#chatForm button').disabled = true;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+window.addEventListener('beforeunload', () => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        sendChatMessage(`${userName} left`);
+        setTimeout(() => ws.close(), 100);
+    }
+    if (audioStream) {
+        audioStream.getTracks().forEach(track => track.stop());
+    }
+});
+</script>
+</body>
+</html>

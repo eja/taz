@@ -56,7 +56,7 @@ Before choosing an operational mode, configure your settings:
 - Connect via existing router/network
 
 ### Permissions & Sharing
-The Android app requires location permissions for BLE scanning and WiFi management permissions for hotspot functionality. These permissions are requested on first launch. Additionally, the app provides a copy of its own APK file to facilitate installation on other Android devices within the network.
+The Android app requires location permissions for BLE scanning, WiFi management permissions for hotspot functionality and Recording permission for the chat room. These permissions are requested on first launch. Additionally, the app provides a copy of its own APK file to facilitate installation on other Android devices within the network.
 
 ## BBS Messaging System with Audio Room
 The BBS (Bulletin Board System) feature provides a simple messaging interface for team communication with added audio capability:

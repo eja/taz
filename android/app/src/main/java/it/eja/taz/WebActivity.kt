@@ -36,6 +36,7 @@ class WebActivity : AppCompatActivity() {
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
         settings.allowFileAccess = true
+        settings.mediaPlaybackRequiresUserGesture = false
 
         webView.setDownloadListener { url, _, _, mimetype, _ ->
             val request = DownloadManager.Request(Uri.parse(url))
@@ -49,6 +50,9 @@ class WebActivity : AppCompatActivity() {
         webView.webViewClient = WebViewClient()
 
         webView.webChromeClient = object : WebChromeClient() {
+            override fun onPermissionRequest(request: PermissionRequest) {
+                request.grant(request.resources)
+            }
             override fun onShowFileChooser(
                 webView: WebView?,
                 filePathCallback: ValueCallback<Array<Uri>>?,

@@ -58,6 +58,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun checkPermissions() {
         val permissions = mutableListOf<String>()
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) permissions.add(Manifest.permission.RECORD_AUDIO)
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) permissions.add(Manifest.permission.ACCESS_FINE_LOCATION)
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CHANGE_WIFI_STATE) != PackageManager.PERMISSION_GRANTED) permissions.add(Manifest.permission.CHANGE_WIFI_STATE)
 
@@ -160,7 +161,7 @@ class MainActivity : AppCompatActivity() {
         mainLayout.addView(checkPublic)
 
         val checkBle = CheckBox(this)
-        checkBle.text = "x§Bluetooth"
+        checkBle.text = "Bluetooth"
         checkBle.textSize = 16f
         checkBle.setTextColor(Color.BLACK)
         checkBle.isChecked = prefs.getBoolean("share_ble", true)

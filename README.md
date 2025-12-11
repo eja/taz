@@ -55,6 +55,9 @@ Before choosing an operational mode, configure your settings:
 - Opens embedded browser directly to `http://127.0.0.1:35248`
 - Connect via existing router/network
 
+### Permissions & Sharing
+The Android app requires location permissions for BLE scanning and WiFi management permissions for hotspot functionality. These permissions are requested on first launch. Additionally, the app provides a copy of its own APK file to facilitate installation on other Android devices within the network.
+
 ## BBS Messaging System with Audio Room
 The BBS (Bulletin Board System) feature provides a simple messaging interface for team communication with added audio capability:
 
@@ -193,5 +196,3 @@ git clone https://github.com/eja/taz.git
 cd taz
 make
 ```
-
-**Note:** The Android app requires location permissions for BLE scanning and WiFi management permissions for hotspot functionality. These permissions are requested on first launch.

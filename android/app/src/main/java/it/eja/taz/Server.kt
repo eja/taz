@@ -15,7 +15,7 @@ object Server {
         try {
             val sourceApk = File(context.applicationInfo.sourceDir)
             val baseFiles = File(context.filesDir, "files")
-            val apkDir = File(baseFiles, "apk")
+            val apkDir = File(baseFiles, "app")
             if (!apkDir.exists()) apkDir.mkdirs()
             val destFile = File(apkDir, "taz.apk")
             if (!destFile.exists()) {
@@ -30,7 +30,7 @@ object Server {
         }
     }
 
-    fun startBinaryServer(context: Context) {
+    fun startBinaryServer(context: Context, extraArgs: List<String>) {
         Thread {
             try {
                 setupFilesFolder(context)
@@ -39,7 +39,10 @@ object Server {
                 val appDir = context.filesDir.absolutePath
                 if (!File(binPath).exists()) return@Thread
 
-                val args = arrayOf("--bbs", "bbs.jsonl", "--web-host", "0.0.0.0")
+                val argsList = mutableListOf("--bbs", "bbs.jsonl")
+                argsList.addAll(extraArgs)
+                val args = argsList.toTypedArray()
+
                 val env = arrayOf("HOME=$appDir", "TMPDIR=${context.cacheDir.absolutePath}")
                 val pid = IntArray(1)
 

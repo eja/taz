@@ -5,6 +5,7 @@ package it.eja.taz
 import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -16,13 +17,11 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.text.InputType
 import android.util.TypedValue
 import android.view.Gravity
-import android.widget.Button
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.TextView
-import android.widget.Toast
+import android.view.View
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.google.zxing.BarcodeFormat
@@ -33,16 +32,22 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mainLayout: LinearLayout
     private lateinit var bleHelper: BLE
     private lateinit var hotspotHelper: Hotspot
+    private lateinit var prefs: SharedPreferences
+
     private val PERM_REQ_CODE = 100
-    private val BUTTON_COLOR = Color.parseColor("#808080")
+    private val BUTTON_COLOR = Color.parseColor("#828282")
+    private val BG_COLOR = Color.parseColor("#F5F5F5")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        prefs = getSharedPreferences("taz_config", Context.MODE_PRIVATE)
+
         mainLayout = LinearLayout(this)
         mainLayout.orientation = LinearLayout.VERTICAL
         mainLayout.gravity = Gravity.CENTER
         mainLayout.setPadding(60, 60, 60, 60)
-        mainLayout.setBackgroundColor(Color.parseColor("#FAFAFA"))
+        mainLayout.setBackgroundColor(BG_COLOR)
         setContentView(mainLayout)
 
         bleHelper = BLE(this)
@@ -61,14 +66,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (Build.VERSION.SDK_INT >= 31) {
-            val needed = listOf(
-                "android.permission.BLUETOOTH_SCAN",
-                "android.permission.BLUETOOTH_ADVERTISE",
-                "android.permission.BLUETOOTH_CONNECT"
-            )
-            needed.forEach {
-                if (ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED) permissions.add(it)
-            }
+            val needed = listOf("android.permission.BLUETOOTH_SCAN", "android.permission.BLUETOOTH_ADVERTISE", "android.permission.BLUETOOTH_CONNECT")
+            needed.forEach { if (ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED) permissions.add(it) }
         } else {
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH) != PackageManager.PERMISSION_GRANTED) permissions.add(Manifest.permission.BLUETOOTH)
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADMIN) != PackageManager.PERMISSION_GRANTED) permissions.add(Manifest.permission.BLUETOOTH_ADMIN)
@@ -77,63 +76,59 @@ class MainActivity : AppCompatActivity() {
         if (permissions.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, permissions.toTypedArray(), PERM_REQ_CODE)
         } else {
-            showModeDialog()
+            showMainMenu()
         }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        showModeDialog()
+        showMainMenu()
     }
 
-    private fun showModeDialog() {
+    private fun showMainMenu() {
         mainLayout.removeAllViews()
 
         val title = TextView(this)
         title.text = "TAZ"
-        title.textSize = 40f
+        title.textSize = 50f
         title.typeface = Typeface.DEFAULT_BOLD
-        title.setTextColor(Color.parseColor("#263238"))
+        title.setTextColor(Color.BLACK)
         title.gravity = Gravity.CENTER
-        title.setPadding(0, 0, 0, 20)
         mainLayout.addView(title)
 
         val subtitle = TextView(this)
         subtitle.text = "Temporary Autonomous Zone"
         subtitle.textSize = 16f
-        subtitle.setTextColor(Color.GRAY)
+        subtitle.setTextColor(Color.DKGRAY)
         subtitle.gravity = Gravity.CENTER
         subtitle.setPadding(0, 0, 0, 80)
         mainLayout.addView(subtitle)
 
-        val btnHost = createStyledButton("Start Server") {
-            startHostMode()
-        }
+        val btnHost = createMenuButton("Server") { startHostMode() }
         mainLayout.addView(btnHost)
 
-        val btnClient = createStyledButton("Connect Client") {
-            startClientMode()
-        }
+        val btnClient = createMenuButton("Client") { startClientMode() }
         mainLayout.addView(btnClient)
 
-        val btnLocal = createStyledButton("Standalone Mode") {
-            startLocalMode()
-        }
+        val btnLocal = createMenuButton("Standalone") { startLocalMode() }
         mainLayout.addView(btnLocal)
+
+        val btnSettings = createMenuButton("Settings") { showSettings() }
+        mainLayout.addView(btnSettings)
     }
 
-    private fun createStyledButton(text: String, onClick: () -> Unit): Button {
+    private fun createMenuButton(text: String, onClick: () -> Unit): Button {
         val btn = Button(this)
         btn.text = text
         btn.setTextColor(Color.WHITE)
         btn.textSize = 16f
-        btn.setPadding(40, 40, 40, 40)
+        btn.setPadding(30, 30, 30, 30)
         btn.isAllCaps = false
         btn.setOnClickListener { onClick() }
 
         val shape = GradientDrawable()
         shape.shape = GradientDrawable.RECTANGLE
-        shape.cornerRadius = 20f
+        shape.cornerRadius = 8f
         shape.setColor(BUTTON_COLOR)
         btn.background = shape
 
@@ -143,13 +138,77 @@ class MainActivity : AppCompatActivity() {
         )
         params.setMargins(0, 0, 0, 30)
         btn.layoutParams = params
-        btn.elevation = 8f
-
         return btn
     }
 
+    private fun showSettings() {
+        mainLayout.removeAllViews()
+
+        val title = TextView(this)
+        title.text = "Settings"
+        title.textSize = 30f
+        title.setTextColor(Color.BLACK)
+        title.gravity = Gravity.CENTER
+        title.setPadding(0, 0, 0, 60)
+        mainLayout.addView(title)
+
+        val checkPublic = CheckBox(this)
+        checkPublic.text = "Public"
+        checkPublic.textSize = 16f
+        checkPublic.setTextColor(Color.BLACK)
+        checkPublic.isChecked = prefs.getBoolean("public_host", true)
+        mainLayout.addView(checkPublic)
+
+        val checkBle = CheckBox(this)
+        checkBle.text = "x§Bluetooth"
+        checkBle.textSize = 16f
+        checkBle.setTextColor(Color.BLACK)
+        checkBle.isChecked = prefs.getBoolean("share_ble", true)
+        mainLayout.addView(checkBle)
+
+        val passLabel = TextView(this)
+        passLabel.text = "Password"
+        passLabel.textSize = 16f
+        passLabel.setTextColor(Color.BLACK)
+        passLabel.setPadding(10, 40, 0, 10)
+        mainLayout.addView(passLabel)
+
+        val passInput = EditText(this)
+        passInput.hint = "Leave empty for none"
+        passInput.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        passInput.setText(prefs.getString("password", ""))
+        mainLayout.addView(passInput)
+
+        val spacer = View(this)
+        mainLayout.addView(spacer, LinearLayout.LayoutParams(1, 60))
+
+        val btnSave = createMenuButton("Save & Return") {
+            prefs.edit()
+                .putBoolean("public_host", checkPublic.isChecked)
+                .putBoolean("share_ble", checkBle.isChecked)
+                .putString("password", passInput.text.toString())
+                .apply()
+            showMainMenu()
+        }
+        mainLayout.addView(btnSave)
+    }
+
+    private fun getBinaryArgs(): List<String> {
+        val args = mutableListOf<String>()
+        if (prefs.getBoolean("public_host", false)) {
+            args.add("--web-host")
+            args.add("0.0.0.0")
+        }
+        val pass = prefs.getString("password", "")
+        if (!pass.isNullOrEmpty()) {
+            args.add("--password")
+            args.add(pass)
+        }
+        return args
+    }
+
     private fun startLocalMode() {
-        Server.startBinaryServer(this)
+        Server.startBinaryServer(this, getBinaryArgs())
         Handler(Looper.getMainLooper()).postDelayed({
             openWebView("http://127.0.0.1:35248/")
         }, 1000)
@@ -166,13 +225,17 @@ class MainActivity : AppCompatActivity() {
         hotspotHelper.startHost(
             onSuccess = { ssid, pass, ip ->
                 val creds = "$ssid\t$pass\t$ip"
-                Server.startBinaryServer(this@MainActivity)
-                bleHelper.startAdvertising(creds)
+                Server.startBinaryServer(this@MainActivity, getBinaryArgs())
+
+                if (prefs.getBoolean("share_ble", true)) {
+                    bleHelper.startAdvertising(creds)
+                }
+
                 updateUiForHost(ssid, pass, "http://$ip:35248")
             },
             onFailure = {
                 Toast.makeText(this, "Hotspot Failed", Toast.LENGTH_SHORT).show()
-                startLocalMode()
+                showMainMenu()
             }
         )
     }
@@ -200,12 +263,13 @@ class MainActivity : AppCompatActivity() {
                     onSuccess = { openWebView("http://$ip:35248") },
                     onFailure = {
                         Toast.makeText(this, "WiFi Failed", Toast.LENGTH_SHORT).show()
-                        startLocalMode()
+                        showMainMenu()
                     }
                 )
             },
             onError = {
                 status.text = "Scan Failed"
+                Handler(Looper.getMainLooper()).postDelayed({ showMainMenu() }, 2000)
             }
         )
     }
@@ -221,14 +285,12 @@ class MainActivity : AppCompatActivity() {
         tvTitle.textSize = 22f
         tvTitle.gravity = Gravity.CENTER
         tvTitle.setTypeface(null, Typeface.BOLD)
-        tvTitle.setTextColor(Color.parseColor("#263238"))
+        tvTitle.setTextColor(Color.BLACK)
         tvTitle.setPadding(0, 0, 0, 30)
         mainLayout.addView(tvTitle)
 
         val qrImage = ImageView(this)
-        val params = LinearLayout.LayoutParams(
-            dpToPx(250f), dpToPx(250f)
-        )
+        val params = LinearLayout.LayoutParams(dpToPx(250f), dpToPx(250f))
         params.setMargins(0, 20, 0, 20)
         qrImage.layoutParams = params
         mainLayout.addView(qrImage)
@@ -240,20 +302,18 @@ class MainActivity : AppCompatActivity() {
         tvInfo.setPadding(20, 20, 20, 40)
         mainLayout.addView(tvInfo)
 
-        val btnToggle = createStyledButton("Show Browser QR") {
+        val btnToggle = createMenuButton("Show Browser QR") {
             isShowingWifi = !isShowingWifi
             updateUiState(tvTitle, qrImage, tvInfo, wifiBitmap, urlBitmap, isShowingWifi, ssid, pass, publicUrl)
         }
-
         btnToggle.setOnClickListener {
             isShowingWifi = !isShowingWifi
             updateUiState(tvTitle, qrImage, tvInfo, wifiBitmap, urlBitmap, isShowingWifi, ssid, pass, publicUrl)
             btnToggle.text = if (isShowingWifi) "Show Browser QR" else "Show WiFi QR"
         }
-
         mainLayout.addView(btnToggle)
 
-        val btnOpen = createStyledButton("Open Local") {
+        val btnOpen = createMenuButton("Open Local") {
             openWebView(publicUrl)
         }
         mainLayout.addView(btnOpen)

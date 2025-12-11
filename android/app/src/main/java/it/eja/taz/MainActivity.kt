@@ -196,7 +196,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun getBinaryArgs(): List<String> {
         val args = mutableListOf<String>()
-        if (prefs.getBoolean("public_host", false)) {
+        if (prefs.getBoolean("public_host", true)) {
             args.add("--web-host")
             args.add("0.0.0.0")
         }
@@ -261,7 +261,7 @@ class MainActivity : AppCompatActivity() {
                 status.text = "Found. Connecting WiFi..."
                 hotspotHelper.connectToWifi(
                     ssid, pass,
-                    onSuccess = { openWebView("http://$ip:35248") },
+                    onSuccess = { openWebView("http://127.0.0.1:35248") },
                     onFailure = {
                         Toast.makeText(this, "WiFi Failed", Toast.LENGTH_SHORT).show()
                         showMainMenu()
@@ -315,7 +315,7 @@ class MainActivity : AppCompatActivity() {
         mainLayout.addView(btnToggle)
 
         val btnOpen = createMenuButton("Open Local") {
-            openWebView(publicUrl)
+            openWebView("http://127.0.0.1:35248/")
         }
         mainLayout.addView(btnOpen)
 

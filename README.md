@@ -1,24 +1,74 @@
 # TAZ
- **Temporary Autonomous Zone** - A lightweight, cross-platform web-based file manager for instant file sharing and management.
+**Temporary Autonomous Zone** - A lightweight, cross-platform web-based file manager for instant file sharing and management.
 
 ## Overview
 TAZ is a simple, self-contained web application that allows you to quickly set up a file management interface on any supported device. Perfect for temporary file sharing, collaborative work environments, or when you need instant access to files across different devices on a network.
 
+The Android app provides three operational modes: running as a local WiFi access point, connecting to an existing TAZ via BLE discovery, or running in standalone mode on your local network.
+
 ## Features
--  **Web-based interface** - Access from any browser
--  **Full file management** - Upload, download, create folders, rename, delete
--  **BBS messaging system** - Optional bulletin board for team communication
--  **Optional password protection** - Secure write operations
--  **External links** - Add custom links to your file manager homepage
--  **Responsive design** - Works on desktop and mobile
--  **Zero dependencies** - Single binary deployment
--  **Cross-platform** - Available for multiple operating systems
--  **Logging support** - Optional request logging to file or stderr
+- **Web-based interface** - Access from any browser
+- **Full file management** - Upload, download, create folders, rename, delete
+- **BBS messaging system** - Optional bulletin board for team communication with audio room capability
+- **Optional password protection** - Secure write operations
+- **External links** - Add custom links to your file manager homepage
+- **Responsive design** - Works on desktop and mobile
+- **Zero dependencies** - Single binary deployment
+- **Cross-platform** - Available for multiple operating systems
+- **Logging support** - Optional request logging to file or stderr
+- **Android app** - Three operational modes with BLE connectivity and QR code sharing
 
-## Quick Start
+## Android App
 
-### Download and Run
-1. Download the appropriate binary for your platform from the [Releases](../../releases) page
+### Main Menu
+The app opens with four main options:
+1. **Server** - Create a local WiFi access point with QR code sharing
+2. **Client** - Scan and connect to existing TAZ instances via Bluetooth
+3. **Standalone** - Run TAZ on local network without creating WiFi
+4. **Settings** - Configure app behavior
+
+### Settings
+Before choosing an operational mode, configure your settings:
+- **Public** Choose public (0.0.0.0) or private (127.0.0.1) access
+- **Bluetooth** Enable/disable BLE credential sharing
+- **Password** Set password for create/update/delete operations (read/list remain open)
+- **Save & Return** Save settings and return to main menu
+
+### Operational Modes
+
+#### Server Mode (Local WiFi Access Point)
+- Creates a temporary WiFi network with random SSID/password
+- Displays QR code for easy connection
+- Once server is ready, shows WiFi QR with two buttons:
+  - **Show Browser QR** - Toggles to URL QR code with access URL
+  - **Open Local** - Opens the embedded browser to the local TAZ
+- On URL QR screen, the toggle button changes to **Show WiFi QR** to return to WiFi credentials
+
+#### Client Mode (BLE Discovery)
+- Checks for location services (required for BLE)
+- Scans for BLE tags containing SSID, password, and IP information
+- Automatically connects to discovered TAZ WiFi network
+- Opens embedded browser to the discovered TAZ URL
+
+#### Standalone Mode
+- Traditional network operation without creating WiFi access point
+- Opens embedded browser directly to `http://127.0.0.1:35248`
+- Connect via existing router/network
+
+## BBS Messaging System with Audio Room
+The BBS (Bulletin Board System) feature provides a simple messaging interface for team communication with added audio capability:
+
+- **Enable BBS**: Use the `-bbs` flag with a database file path (e.g., `-bbs messages.db`)
+- **Audio Room**: Special microphone button brings participants to an audio-only room
+- **Audio Controls**: Participants can enable/disable their microphone at any time
+- **Cross-platform Access**:
+  - Android app: Full microphone control (speak/listen)
+  - iOS/Desktop browsers: Listen-only mode available
+
+## Console Versions (Linux/macOS/Windows)
+
+### Quick Start
+1. Download the appropriate binary for your platform from the [Releases](../../releases/latest) page
 2. Make it executable (Unix-like systems):
    ```bash
    chmod +x taz
@@ -89,7 +139,7 @@ Then run TAZ, pointing it to your config file:
 | `-web-port` | `35248` | Port for the web server |
 | `-password` | (empty) | Password for write operations |
 | `-root` | `files` | Root directory for file management |
-| `-bbs` | (empty) | Path to SQLite database for BBS messaging (disabled if not provided) |
+| `-bbs` | (empty) | Path to the database for BBS messaging (disabled if not provided) |
 | `-log` | `false` | Enable request logging |
 | `-log-file` | (empty) | Path to log file (uses stderr if empty) |
 | `-url` | (none) | External links (format: `Name\|URL`), can be used multiple times |
@@ -128,23 +178,6 @@ In the JSON file, the option names are the same as the command-line flags, but w
 ./taz -config config.json -web-port 9090
 ```
 
-### BBS Messaging System
-The BBS (Bulletin Board System) feature provides a simple messaging interface for team communication:
-
-- **Enable BBS**: Use the `-bbs` flag with a database file path (e.g., `-bbs messages.db`)
-- **Database**: Uses SQLite to store messages persistently
-- **Default behavior**: BBS is disabled when no database path is provided
-- **Access**: Available through the web interface alongside file management
-
-Example BBS usage:
-```bash
-# Enable BBS with custom database
-./taz -bbs team-board.db 
-
-# BBS disabled (default behavior)
-./taz -root /shared/files
-```
-
 ### External Links
 You can add custom links to the homepage using the `-url` flag multiple times:
 ```bash
@@ -160,3 +193,5 @@ git clone https://github.com/eja/taz.git
 cd taz
 make
 ```
+
+**Note:** The Android app requires location permissions for BLE scanning and WiFi management permissions for hotspot functionality. These permissions are requested on first launch.

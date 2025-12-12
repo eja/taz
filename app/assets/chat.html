@@ -6,6 +6,18 @@
     <title>Room</title>
     <link href="/static/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/bootstrap-icons.css">
+    <script>
+        (function() {
+            const host = window.location.hostname;
+            const protocol = window.location.protocol;
+            const isLocal = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+
+            if (!isLocal && protocol === 'http:') {
+                console.log("Redirecting to HTTPS...");
+                window.location.href = window.location.href.replace('http:', 'https:');
+            }
+        })();
+    </script>
 </head>
 <body>
 <div class="modal fade" id="usernameModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
@@ -18,7 +30,7 @@
                 <form id="usernameForm">
                     <div class="mb-3">
                         <label for="usernameInput" class="form-label">Name:</label>
-                        <input type="text" class="form-control" id="usernameInput" value="..." placeholder="Enter username" required autofocus>
+                        <input type="text" class="form-control" id="usernameInput" autofocus>
                     </div>
                     <button type="submit" class="btn btn-primary">Join</button>
                 </form>
@@ -75,10 +87,13 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const input = document.getElementById('usernameInput');
         userName = input.value.trim();
-        if (userName) {
-            modal.hide();
-            initializeRoom();
+        
+        if (!userName) {
+            userName = Date.now().toString().slice(5,11);
         }
+
+        modal.hide();
+        initializeRoom();
     });
 });
 
@@ -96,10 +111,12 @@ function connectWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
     ws = new WebSocket(protocol + window.location.host + '/room');
     
+    ws.binaryType = 'arraybuffer';
+    
     ws.onopen = () => {
         enableChatInput();
         addMessage('System', 'Connected', 'system');
-        sendChatMessage(`${userName} joined`);
+        sendChatMessage(`${userName} joined`, 'system');
     };
     
     ws.onmessage = (event) => {
@@ -111,13 +128,17 @@ function connectWebSocket() {
                 addMessage('User', event.data, 'chat');
             }
         } else if (speakerEnabled) {
-            const f32 = new Float32Array(event.data);
-            const buffer = audioCtx.createBuffer(1, f32.length, audioCtx.sampleRate);
-            buffer.copyToChannel(f32, 0);
-            const source = audioCtx.createBufferSource();
-            source.buffer = buffer;
-            source.connect(audioCtx.destination);
-            source.start();
+            try {
+                const f32 = new Float32Array(event.data);
+                const buffer = audioCtx.createBuffer(1, f32.length, audioCtx.sampleRate);
+                buffer.copyToChannel(f32, 0);
+                const source = audioCtx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioCtx.destination);
+                source.start();
+            } catch (e) {
+                console.error("Audio decode error", e);
+            }
         }
     };
     
@@ -138,9 +159,6 @@ async function initializeMicrophone() {
         micBtn.classList.remove('btn-outline-secondary');
         micBtn.classList.add('btn-outline-success');
     } catch (error) {
-        if (window.location.protocol !== 'https:') {
-            window.location.href = 'https:' + window.location.href.substring(window.location.protocol.length);
-        }
         const micBtn = document.getElementById('micBtn');
         micBtn.disabled = true;
     }
@@ -240,22 +258,25 @@ function toggleSpeaker() {
     }
 }
 
-function sendChatMessage() {
+function sendChatMessage(text = null, type = 'chat') {
     const input = document.getElementById('messageInput');
-    const message = input.value.trim();
+    const message = text || input.value.trim();
     
     if (!message || !ws || ws.readyState !== WebSocket.OPEN) return;
     
     const chatData = {
         sender: userName,
         message: message,
-        type: 'chat'
+        type: type
     };
     
     ws.send(JSON.stringify(chatData));
-    addMessage('You', message, 'self');
-    input.value = '';
-    input.focus();
+    
+    if (!text) {
+        addMessage('You', message, 'self');
+        input.value = '';
+        input.focus();
+    }
 }
 
 function addMessage(sender, text, type = 'chat') {
@@ -273,7 +294,7 @@ function addMessage(sender, text, type = 'chat') {
     let textClass = '';
     
     if (type === 'system') {
-        badgeClass = 'bg-warning';
+        badgeClass = 'bg-warning text-dark';
         textClass = 'text-muted fst-italic';
     } else if (type === 'self') {
         badgeClass = 'bg-primary';
@@ -311,7 +332,7 @@ function escapeHtml(text) {
 
 window.addEventListener('beforeunload', () => {
     if (ws && ws.readyState === WebSocket.OPEN) {
-        sendChatMessage(`${userName} left`);
+        sendChatMessage(`${userName} left`, 'system');
         setTimeout(() => ws.close(), 100);
     }
     if (audioStream) {

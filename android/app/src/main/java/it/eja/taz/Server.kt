@@ -39,10 +39,7 @@ object Server {
                 val appDir = context.filesDir.absolutePath
                 if (!File(binPath).exists()) return@Thread
 
-                val argsList = mutableListOf("--bbs", "files/app/bbs.jsonl")
-                argsList.addAll(extraArgs)
-                val args = argsList.toTypedArray()
-
+                val args = extraArgs.toTypedArray()
                 val env = arrayOf("HOME=$appDir", "TMPDIR=${context.cacheDir.absolutePath}")
                 val pid = IntArray(1)
 

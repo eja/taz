@@ -276,7 +276,7 @@ class MainActivity : AppCompatActivity() {
                 status.text = "Found. Connecting WiFi..."
                 hotspotHelper.connectToWifi(
                     ssid, pass,
-                    onSuccess = { openWebView("http://127.0.0.1:35248") },
+                    onSuccess = { openWebView("http://$ip:35248") },
                     onFailure = {
                         Toast.makeText(this, "WiFi Failed", Toast.LENGTH_SHORT).show()
                         showMainMenu()

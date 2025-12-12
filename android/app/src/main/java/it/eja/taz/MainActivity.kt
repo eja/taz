@@ -192,6 +192,21 @@ class MainActivity : AppCompatActivity() {
             showMainMenu()
         }
         mainLayout.addView(btnSave)
+
+        val ipLabel = TextView(this)
+        ipLabel.text = "Internal IP:"
+        ipLabel.textSize = 16f
+        ipLabel.setTextColor(Color.BLACK)
+        ipLabel.setPadding(10, 40, 0, 10)
+        mainLayout.addView(ipLabel)
+
+        val ipList = TextView(this)
+        val ips = hotspotHelper.getAllIps()
+        ipList.text = if (ips.isNotEmpty()) ips.joinToString("\n") else "None"
+        ipList.textSize = 14f
+        ipList.setTextColor(Color.DKGRAY)
+        ipList.setPadding(20, 0, 0, 0)
+        mainLayout.addView(ipList)
     }
 
     private fun getBinaryArgs(): List<String> {

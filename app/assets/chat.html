@@ -17,8 +17,8 @@
             <div class="modal-body">
                 <form id="usernameForm">
                     <div class="mb-3">
-                        <label for="usernameInput" class="form-label">Username:</label>
-                        <input type="text" class="form-control" id="usernameInput" placeholder="Enter username" required autofocus>
+                        <label for="usernameInput" class="form-label">Name:</label>
+                        <input type="text" class="form-control" id="usernameInput" value="..." placeholder="Enter username" required autofocus>
                     </div>
                     <button type="submit" class="btn btn-primary">Join</button>
                 </form>
@@ -138,6 +138,9 @@ async function initializeMicrophone() {
         micBtn.classList.remove('btn-outline-secondary');
         micBtn.classList.add('btn-outline-success');
     } catch (error) {
+        if (window.location.protocol !== 'https:') {
+            window.location.href = 'https:' + window.location.href.substring(window.location.protocol.length);
+        }
         const micBtn = document.getElementById('micBtn');
         micBtn.disabled = true;
     }

@@ -15,7 +15,7 @@ object Server {
         try {
             val sourceApk = File(context.applicationInfo.sourceDir)
             val baseFiles = File(context.filesDir, "files")
-            val apkDir = File(baseFiles, "app")
+            val apkDir = File(baseFiles, "sys")
             if (!apkDir.exists()) apkDir.mkdirs()
             val destFile = File(apkDir, "taz.apk")
             if (!destFile.exists()) {

@@ -9,13 +9,14 @@ import (
 	"html/template"
 	"io/ioutil"
 	"log"
+	"path/filepath"
 	"strings"
 )
 
 const (
 	sessionCookie = "taz_auth"
 	appLabel      = "TAZ File Manager"
-	appVersion    = "1.12.11"
+	appVersion    = "1.12.12"
 )
 
 //go:embed assets
@@ -35,6 +36,7 @@ type Options struct {
 	WebPort        int      `json:"web_port"`
 	Password       string   `json:"password"`
 	RootPath       string   `json:"root_path"`
+	SystemPath     string   `json:"system_path"`
 	LogEnabled     bool     `json:"log_enabled"`
 	LogFile        string   `json:"log_file"`
 	BBSPath        string   `json:"bbs_path"`
@@ -55,9 +57,9 @@ func initOptions() {
 	webPort := flag.Int("web-port", options.WebPort, "The port for the web server")
 	password := flag.String("password", options.Password, "Password for write operations (empty for no auth)")
 	rootPath := flag.String("root", options.RootPath, "The root directory for file management")
+	sysPath := flag.String("sys", "", "Path to the system directory (defaults to <root>/sys)")
 	logEnabled := flag.Bool("log", options.LogEnabled, "Enable logging")
 	logFile := flag.String("log-file", options.LogFile, "Path to the log file")
-	bbsPath := flag.String("bbs", options.BBSPath, "Path to the BBS database (default: disabled)")
 	flag.Var(&urlList, "url", "Link to display on root page. Format: 'Name|URL'. Repeatable.")
 	flag.Var(&dhcpList, "dhcp", "DHCP interface and subnet (e.g., 'wlan0:10.35.2.0/24'). Repeatable.")
 	dns := flag.String("dns", "", "Enable DNS sinkhole. Optionally provide an upstream IP (e.g., '8.8.8.8').")
@@ -91,14 +93,14 @@ func initOptions() {
 	if isFlagSet["root"] {
 		options.RootPath = *rootPath
 	}
+	if isFlagSet["sys"] {
+		options.SystemPath = *sysPath
+	}
 	if isFlagSet["log"] {
 		options.LogEnabled = *logEnabled
 	}
 	if isFlagSet["log-file"] {
 		options.LogFile = *logFile
-	}
-	if isFlagSet["bbs"] {
-		options.BBSPath = *bbsPath
 	}
 	if isFlagSet["url"] {
 		options.URLs = urlList
@@ -125,4 +127,10 @@ func initOptions() {
 			externalLinks = append(externalLinks, ExternalLink{Name: name, URL: url})
 		}
 	}
+
+	if options.SystemPath == "" {
+		options.SystemPath = filepath.Join(options.RootPath, "sys")
+	}
+
+	options.BBSPath = filepath.Join(options.SystemPath, "bbs.db")
 }

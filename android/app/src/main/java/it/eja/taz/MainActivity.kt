@@ -11,6 +11,7 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.StateListDrawable
 import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
@@ -36,6 +37,7 @@ class MainActivity : AppCompatActivity() {
 
     private val PERM_REQ_CODE = 100
     private val BUTTON_COLOR = Color.parseColor("#828282")
+    private val BUTTON_FOCUS_COLOR = Color.parseColor("#444444")
     private val BG_COLOR = Color.parseColor("#F5F5F5")
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,12 +45,17 @@ class MainActivity : AppCompatActivity() {
 
         prefs = getSharedPreferences("taz_config", Context.MODE_PRIVATE)
 
+        val scrollView = ScrollView(this)
+        scrollView.isFillViewport = true
+        scrollView.setBackgroundColor(BG_COLOR)
+
         mainLayout = LinearLayout(this)
         mainLayout.orientation = LinearLayout.VERTICAL
         mainLayout.gravity = Gravity.CENTER
         mainLayout.setPadding(60, 60, 60, 60)
-        mainLayout.setBackgroundColor(BG_COLOR)
-        setContentView(mainLayout)
+
+        scrollView.addView(mainLayout)
+        setContentView(scrollView)
 
         bleHelper = BLE(this)
         hotspotHelper = Hotspot(this)
@@ -151,12 +158,23 @@ class MainActivity : AppCompatActivity() {
         btn.setPadding(30, 30, 30, 30)
         btn.isAllCaps = false
         btn.setOnClickListener { onClick() }
+        btn.isFocusable = true
 
-        val shape = GradientDrawable()
-        shape.shape = GradientDrawable.RECTANGLE
-        shape.cornerRadius = 8f
-        shape.setColor(BUTTON_COLOR)
-        btn.background = shape
+        val defaultShape = GradientDrawable()
+        defaultShape.shape = GradientDrawable.RECTANGLE
+        defaultShape.cornerRadius = 8f
+        defaultShape.setColor(BUTTON_COLOR)
+
+        val focusedShape = GradientDrawable()
+        focusedShape.shape = GradientDrawable.RECTANGLE
+        focusedShape.cornerRadius = 8f
+        focusedShape.setColor(BUTTON_FOCUS_COLOR)
+
+        val states = StateListDrawable()
+        states.addState(intArrayOf(android.R.attr.state_focused), focusedShape)
+        states.addState(intArrayOf(), defaultShape)
+
+        btn.background = states
 
         val params = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -216,7 +234,7 @@ class MainActivity : AppCompatActivity() {
                 .putBoolean("share_ble", checkBle.isChecked)
                 .putString("password", passInput.text.toString())
                 .apply()
-            
+
             if (initialPublic != newPublic) {
                 Server.restartBinaryServer(this, getBinaryArgs())
             }

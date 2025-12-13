@@ -40,6 +40,11 @@ class MainActivity : AppCompatActivity() {
     private val BUTTON_FOCUS_COLOR = Color.parseColor("#444444")
     private val BG_COLOR = Color.parseColor("#F5F5F5")
 
+    private var currentMode = "MENU"
+    private var savedSsid = ""
+    private var savedPass = ""
+    private var savedIp = ""
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -60,7 +65,22 @@ class MainActivity : AppCompatActivity() {
         bleHelper = BLE(this)
         hotspotHelper = Hotspot(this)
 
+        if (savedInstanceState != null) {
+            currentMode = savedInstanceState.getString("mode", "MENU")
+            savedSsid = savedInstanceState.getString("ssid", "")
+            savedPass = savedInstanceState.getString("pass", "")
+            savedIp = savedInstanceState.getString("ip", "")
+        }
+
         checkPermissions()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString("mode", currentMode)
+        outState.putString("ssid", savedSsid)
+        outState.putString("pass", savedPass)
+        outState.putString("ip", savedIp)
     }
 
     private fun checkPermissions() {
@@ -110,7 +130,11 @@ class MainActivity : AppCompatActivity() {
         Server.fetchStatus { status ->
             runOnUiThread {
                 if (status != null) {
-                    showMainMenu()
+                    if (currentMode == "HOST" && savedSsid.isNotEmpty()) {
+                        updateUiForHost(savedSsid, savedPass, "http://$savedIp:35248")
+                    } else {
+                        showMainMenu()
+                    }
                 } else {
                     Handler(Looper.getMainLooper()).postDelayed({ waitForServerUp() }, 500)
                 }
@@ -120,6 +144,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showMainMenu() {
         mainLayout.removeAllViews()
+        currentMode = "MENU"
 
         val title = TextView(this)
         title.text = "TAZ"
@@ -299,6 +324,11 @@ class MainActivity : AppCompatActivity() {
             onSuccess = { ssid, pass, ip ->
                 val creds = "$ssid\t$pass\t$ip"
 
+                currentMode = "HOST"
+                savedSsid = ssid
+                savedPass = pass
+                savedIp = ip
+
                 if (prefs.getBoolean("share_ble", true)) {
                     bleHelper.startAdvertising(creds)
                 }
@@ -401,7 +431,8 @@ class MainActivity : AppCompatActivity() {
         if (showingWifi) {
             title.text = "1. Connect WiFi"
             img.setImageBitmap(wifiBmp)
-            info.text = "SSID: $ssid\nPassword: $pass"
+            val formattedPass = pass.chunked(4).joinToString("\u00B7")
+            info.text = "SSID: $ssid\nCode: $formattedPass"
         } else {
             title.text = "2. Open Browser"
             img.setImageBitmap(urlBmp)
@@ -437,7 +468,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        bleHelper.stopAdvertising()
-        hotspotHelper.stopHost()
+        if (!isChangingConfigurations) {
+            bleHelper.stopAdvertising()
+            hotspotHelper.stopHost()
+            currentMode = "MENU"
+        }
     }
 }

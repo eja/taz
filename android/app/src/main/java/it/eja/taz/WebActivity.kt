@@ -39,6 +39,9 @@ class WebActivity : AppCompatActivity() {
         settings.mediaPlaybackRequiresUserGesture = false
         settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
 
+        settings.allowUniversalAccessFromFileURLs = true
+        settings.allowFileAccessFromFileURLs = true
+
         webView.setDownloadListener { url, _, _, mimetype, _ ->
             val request = DownloadManager.Request(Uri.parse(url))
             request.setMimeType(mimetype)

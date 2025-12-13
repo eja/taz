@@ -19,7 +19,9 @@ import java.util.Collections
 
 class Hotspot(private val context: Context) {
 
-    private var reservation: WifiManager.LocalOnlyHotspotReservation? = null
+    companion object {
+        private var reservation: WifiManager.LocalOnlyHotspotReservation? = null
+    }
 
     fun getAllIps(): Set<String> {
         val ips = mutableSetOf<String>()
@@ -96,6 +98,7 @@ class Hotspot(private val context: Context) {
     fun stopHost() {
         try {
             reservation?.close()
+            reservation = null
         } catch (e: Exception) {}
     }
 

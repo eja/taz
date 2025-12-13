@@ -20,8 +20,11 @@ class BLE(private val context: Context) {
     private val btManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
     private val adapter = btManager.adapter
 
-    private var gattServer: BluetoothGattServer? = null
-    private var advertiser: BluetoothLeAdvertiser? = null
+    companion object {
+        private var gattServer: BluetoothGattServer? = null
+        private var advertiser: BluetoothLeAdvertiser? = null
+    }
+
     private var hostCredentials = ""
 
     fun startAdvertising(credentials: String) {
@@ -72,6 +75,8 @@ class BLE(private val context: Context) {
         try {
             advertiser?.stopAdvertising(object : AdvertiseCallback() {})
             gattServer?.close()
+            advertiser = null
+            gattServer = null
         } catch (e: Exception) {}
     }
 

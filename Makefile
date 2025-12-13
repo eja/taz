@@ -1,9 +1,5 @@
 .PHONY: clean test lint taz android-libs
 
-PACKAGE_NAME := github.com/eja/taz
-GOLANG_CROSS_VERSION := v1.22.2
-GOPATH ?= '$(HOME)/go'
-
 all: lint taz
 
 clean:
@@ -14,7 +10,7 @@ lint:
 
 taz:
 	@mkdir -p build
-	@CGO_ENABLED=0 go build -ldflags "-s -w" -o build/taz ./app
-
-android-libs:
+	@go build -ldflags "-s -w" -o build/taz ./app
 	@GOOS=android GOARCH=arm64 go build -ldflags "-s -w" -o android/app/src/main/jniLibs/arm64-v8a/libtaz.so ./app
+	@GOOS=linux GOARCH=arm GOARM=7 go build -ldflags "-s -w" -o android/app/src/main/jniLibs/armeabi-v7a/libtaz.so ./app
+

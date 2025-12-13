@@ -404,3 +404,41 @@ func startNetworkServices() {
 		go runDNSServer(dnsServerIP, dnsForwarder)
 	}
 }
+
+func getServingIPs() []string {
+	var listeningIPs []string
+
+	host := options.WebHost
+
+	if host == "0.0.0.0" || host == "" {
+		interfaces, err := net.Interfaces()
+		if err != nil {
+			return []string{"Error getting interfaces: " + err.Error()}
+		}
+
+		for _, iface := range interfaces {
+			if iface.Flags&net.FlagUp == 0 {
+				continue
+			}
+
+			addrs, err := iface.Addrs()
+			if err != nil {
+				continue
+			}
+
+			for _, addr := range addrs {
+				if ipnet, ok := addr.(*net.IPNet); ok {
+					if ipnet.IP.To4() != nil {
+						listeningIPs = append(listeningIPs, ipnet.IP.String())
+					}
+				}
+			}
+		}
+	} else if host == "localhost" || host == "127.0.0.1" {
+		listeningIPs = []string{"127.0.0.1"}
+	} else {
+		listeningIPs = []string{host}
+	}
+
+	return listeningIPs
+}

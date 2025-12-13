@@ -11,12 +11,13 @@ import (
 	"log"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const (
 	sessionCookie = "taz_auth"
-	appLabel      = "TAZ File Manager"
-	appVersion    = "1.12.12"
+	appLabel      = "TAZ"
+	appVersion    = "1.12.13"
 )
 
 //go:embed assets
@@ -29,6 +30,7 @@ var (
 	options       Options
 	urlList       stringSlice
 	dhcpList      stringSlice
+	uptime        = time.Now()
 )
 
 type Options struct {

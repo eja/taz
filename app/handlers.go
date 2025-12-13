@@ -323,3 +323,18 @@ func handleBBSPost(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, "/bbs", http.StatusSeeOther)
 }
+
+func statusHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	status := map[string]interface{}{
+		"name":    appLabel,
+		"version": appVersion,
+		"time":    time.Now().Unix(),
+		"ips":     getServingIPs(),
+		"port":    options.WebPort,
+		"uptime":  int(time.Since(uptime).Seconds()),
+	}
+
+	json.NewEncoder(w).Encode(status)
+}

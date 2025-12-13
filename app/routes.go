@@ -17,6 +17,7 @@ func setupRoutes() {
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(assetsFS))))
 
 	http.HandleFunc("/", fileManagerHandler)
+	http.HandleFunc("/status", statusHandler)
 	http.HandleFunc("/download", downloadHandler)
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/logout", logoutHandler)

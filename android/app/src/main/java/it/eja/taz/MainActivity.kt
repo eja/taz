@@ -77,13 +77,38 @@ class MainActivity : AppCompatActivity() {
         if (permissions.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, permissions.toTypedArray(), PERM_REQ_CODE)
         } else {
-            showMainMenu()
+            startApp()
         }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        showMainMenu()
+        startApp()
+    }
+
+    private fun startApp() {
+        mainLayout.removeAllViews()
+        val loading = TextView(this)
+        loading.text = "Starting Engine..."
+        loading.textSize = 24f
+        loading.gravity = Gravity.CENTER
+        loading.setTextColor(Color.BLACK)
+        mainLayout.addView(loading)
+
+        Server.startBinaryServer(this, getBinaryArgs())
+        waitForServerUp()
+    }
+
+    private fun waitForServerUp() {
+        Server.fetchStatus { status ->
+            runOnUiThread {
+                if (status != null) {
+                    showMainMenu()
+                } else {
+                    Handler(Looper.getMainLooper()).postDelayed({ waitForServerUp() }, 500)
+                }
+            }
+        }
     }
 
     private fun showMainMenu() {
@@ -143,6 +168,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showSettings() {
+        val initialPublic = prefs.getBoolean("public_host", true)
         mainLayout.removeAllViews()
 
         val title = TextView(this)
@@ -157,7 +183,7 @@ class MainActivity : AppCompatActivity() {
         checkPublic.text = "Public"
         checkPublic.textSize = 16f
         checkPublic.setTextColor(Color.BLACK)
-        checkPublic.isChecked = prefs.getBoolean("public_host", true)
+        checkPublic.isChecked = initialPublic
         mainLayout.addView(checkPublic)
 
         val checkBle = CheckBox(this)
@@ -184,29 +210,45 @@ class MainActivity : AppCompatActivity() {
         mainLayout.addView(spacer, LinearLayout.LayoutParams(1, 60))
 
         val btnSave = createMenuButton("Save & Return") {
+            val newPublic = checkPublic.isChecked
             prefs.edit()
-                .putBoolean("public_host", checkPublic.isChecked)
+                .putBoolean("public_host", newPublic)
                 .putBoolean("share_ble", checkBle.isChecked)
                 .putString("password", passInput.text.toString())
                 .apply()
+            
+            if (initialPublic != newPublic) {
+                Server.restartBinaryServer(this, getBinaryArgs())
+            }
             showMainMenu()
         }
         mainLayout.addView(btnSave)
 
-        val ipLabel = TextView(this)
-        ipLabel.text = "Internal IP:"
-        ipLabel.textSize = 16f
-        ipLabel.setTextColor(Color.BLACK)
-        ipLabel.setPadding(10, 40, 0, 10)
-        mainLayout.addView(ipLabel)
+        val infoText = TextView(this)
+        infoText.text = "Fetching info..."
+        infoText.textSize = 15f
+        infoText.setTextColor(Color.DKGRAY)
+        infoText.setPadding(20, 20, 0, 0)
+        infoText.setLineSpacing(0f, 1.2f)
+        mainLayout.addView(infoText)
 
-        val ipList = TextView(this)
-        val ips = hotspotHelper.getAllIps()
-        ipList.text = if (ips.isNotEmpty()) ips.joinToString("\n") else "None"
-        ipList.textSize = 14f
-        ipList.setTextColor(Color.DKGRAY)
-        ipList.setPadding(20, 0, 0, 0)
-        mainLayout.addView(ipList)
+        Server.fetchStatus { status ->
+            runOnUiThread {
+                if (status != null) {
+                    val sb = StringBuilder()
+                    sb.append("Uptime: ${status.uptime}\n")
+                    sb.append("Version: ${status.version}\n")
+                    sb.append("Port: ${status.port}\n")
+                    sb.append("IPs:\n    127.0.0.1\n")
+                    if (checkPublic.isChecked) {
+                        sb.append(hotspotHelper.getAllIps().joinToString("\n") { "    $it" })
+                    }
+                    infoText.text = sb.toString()
+                } else {
+                    infoText.text = "Server unreachable"
+                }
+            }
+        }
     }
 
     private fun getBinaryArgs(): List<String> {
@@ -224,10 +266,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startLocalMode() {
-        Server.startBinaryServer(this, getBinaryArgs())
-        Handler(Looper.getMainLooper()).postDelayed({
-            openWebView("http://127.0.0.1:35248/")
-        }, 1000)
+        openWebView("http://127.0.0.1:35248/")
     }
 
     private fun startHostMode() {
@@ -241,7 +280,6 @@ class MainActivity : AppCompatActivity() {
         hotspotHelper.startHost(
             onSuccess = { ssid, pass, ip ->
                 val creds = "$ssid\t$pass\t$ip"
-                Server.startBinaryServer(this@MainActivity, getBinaryArgs())
 
                 if (prefs.getBoolean("share_ble", true)) {
                     bleHelper.startAdvertising(creds)
@@ -334,10 +372,7 @@ class MainActivity : AppCompatActivity() {
         }
         mainLayout.addView(btnOpen)
 
-        tvTitle.text = "1. Connect WiFi"
-        qrImage.setImageBitmap(wifiBitmap)
-        tvInfo.text = "SSID: $ssid\nPassword: $pass"
-        btnToggle.text = "Show Browser QR"
+        updateUiState(tvTitle, qrImage, tvInfo, wifiBitmap, urlBitmap, true, ssid, pass, publicUrl)
     }
 
     private fun updateUiState(

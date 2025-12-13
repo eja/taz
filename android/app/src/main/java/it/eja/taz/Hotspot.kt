@@ -49,7 +49,7 @@ class Hotspot(private val context: Context) {
             if (attempt < 10) {
                 Handler(Looper.getMainLooper()).postDelayed({
                     waitForIp(preIps, attempt + 1, onSuccess, onFailure)
-                }, 500)
+                }, 1000)
             } else {
                 onFailure()
             }

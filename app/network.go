@@ -413,7 +413,7 @@ func getServingIPs() []string {
 	if host == "0.0.0.0" || host == "" {
 		interfaces, err := net.Interfaces()
 		if err != nil {
-			return []string{"Error getting interfaces: " + err.Error()}
+			return []string{options.WebHost}
 		}
 
 		for _, iface := range interfaces {

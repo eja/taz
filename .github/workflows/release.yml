@@ -26,8 +26,6 @@ jobs:
             goarch: amd64
           - goos: darwin
             goarch: arm64
-          - goos: android
-            goarch: arm64
 
     steps:
       - uses: actions/checkout@v4
@@ -50,13 +48,6 @@ jobs:
           if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
           go build -ldflags="-s -w" -o dist/taz${EXT} ./app
 
-      - name: Upload Artifact (Android ARM64)
-        if: matrix.goos == 'android'
-        uses: actions/upload-artifact@v4
-        with:
-          name: binary-android-arm64
-          path: dist/taz
-
       - name: Archive
         run: |
           EXT=""
@@ -74,58 +65,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  build-android-ndk:
-    name: Build android/arm
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - uses: nttld/setup-ndk@v1
-        id: setup-ndk
-        with:
-          ndk-version: r25c
-
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '1.24'
-
-      - name: Build with CGO
-        env:
-          GOOS: android
-          GOARCH: arm
-          GOARM: 7
-          CGO_ENABLED: 1
-        run: |
-          mkdir -p dist
-          export CC=${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi21-clang
-          go build -ldflags="-s -w" -o dist/taz ./app
-
-      - name: Upload Artifact (Android ARM32)
-        uses: actions/upload-artifact@v4
-        with:
-          name: binary-android-arm32
-          path: dist/taz
-
-      - name: Archive
-        run: |
-          tar -C dist -czvf taz-android-arm32.tar.gz taz
-
-      - name: Upload Release Asset
-        uses: softprops/action-gh-release@v1
-        with:
-          files: taz-android-arm32.tar.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   build-android-apk:
     name: Build Android APK
-    needs: [build, build-android-ndk]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.24'
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -133,27 +84,8 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Download ARM32 Binary
-        uses: actions/download-artifact@v4
-        with:
-          name: binary-android-arm32
-          path: dist-arm32
-
-      - name: Setup ARM32 JNI library
-        run: |
-          mkdir -p android/app/src/main/jniLibs/armeabi-v7a
-          mv dist-arm32/taz android/app/src/main/jniLibs/armeabi-v7a/libtaz.so
-
-      - name: Download ARM64 Binary
-        uses: actions/download-artifact@v4
-        with:
-          name: binary-android-arm64
-          path: dist-arm64
-
-      - name: Setup ARM64 JNI library
-        run: |
-          mkdir -p android/app/src/main/jniLibs/arm64-v8a
-          mv dist-arm64/taz android/app/src/main/jniLibs/arm64-v8a/libtaz.so
+      - name: Build Libraries (Make)
+        run: make taz
 
       - name: Build AAB
         run: |

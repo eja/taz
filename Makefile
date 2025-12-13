@@ -11,6 +11,6 @@ lint:
 taz:
 	@mkdir -p build
 	@go build -ldflags "-s -w" -o build/taz ./app
-	@GOOS=android GOARCH=arm64 go build -ldflags "-s -w" -o android/app/src/main/jniLibs/arm64-v8a/libtaz.so ./app
+	@GOOS=linux GOARCH=arm64 go build -ldflags "-s -w" -o android/app/src/main/jniLibs/arm64-v8a/libtaz.so ./app
 	@GOOS=linux GOARCH=arm GOARM=7 go build -ldflags "-s -w" -o android/app/src/main/jniLibs/armeabi-v7a/libtaz.so ./app
 

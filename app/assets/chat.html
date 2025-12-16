@@ -6,30 +6,15 @@
     <title>Room</title>
     <link href="/static/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/bootstrap-icons.css">
-    <script>
-        (function() {
-            const host = window.location.hostname;
-            const protocol = window.location.protocol;
-            const isLocal = host === 'localhost' || host === '127.0.0.1' || host === '::1';
-
-            if (!isLocal && protocol === 'http:') {
-                console.log("Redirecting to HTTPS...");
-                window.location.href = window.location.href.replace('http:', 'https:');
-            }
-        })();
-    </script>
 </head>
 <body>
 <div class="modal fade" id="usernameModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Welcome</h5>
-            </div>
             <div class="modal-body">
                 <form id="usernameForm">
                     <div class="mb-3">
-                        <label for="usernameInput" class="form-label">Name:</label>
+                        <label for="usernameInput" class="form-label">Name</label>
                         <input type="text" class="form-control" id="usernameInput" autofocus>
                     </div>
                     <button type="submit" class="btn btn-primary">Join</button>
@@ -43,10 +28,10 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Room</h1>
         <span>
-            <button id="micBtn" class="btn btn-sm btn-outline-secondary" disabled>
+            <button type="button" class="btn btn-sm btn-outline-secondary d-none d-md-inline-block mic-btn" disabled>
                 <i class="bi bi-mic-mute"></i>
             </button>
-            <button id="speakerBtn" class="btn btn-sm btn-outline-secondary" disabled>
+            <button type="button" class="btn btn-sm btn-outline-secondary d-none d-md-inline-block speaker-btn" disabled>
                 <i class="bi bi-volume-mute"></i>
             </button>
             <a href="/" class="btn btn-sm btn-outline-secondary">
@@ -67,6 +52,15 @@
             </button>
         </div>
     </form>
+
+    <div class="d-flex justify-content-center d-md-none gap-3 mt-4">
+        <button type="button" class="btn btn-lg btn-outline-secondary mic-btn" disabled>
+            <i class="bi bi-mic-mute"></i>
+        </button>
+        <button type="button" class="btn btn-lg btn-outline-secondary speaker-btn" disabled>
+            <i class="bi bi-volume-mute"></i>
+        </button>
+    </div>
 </div>
 
 <script src="/static/bootstrap.bundle.min.js"></script>
@@ -154,13 +148,15 @@ async function initializeMicrophone() {
         const testStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         testStream.getTracks().forEach(track => track.stop());
         
-        const micBtn = document.getElementById('micBtn');
-        micBtn.disabled = false;
-        micBtn.classList.remove('btn-outline-secondary');
-        micBtn.classList.add('btn-outline-success');
+        document.querySelectorAll('.mic-btn').forEach(btn => {
+            btn.disabled = false;
+            btn.classList.remove('btn-outline-secondary');
+            btn.classList.add('btn-outline-success');
+        });
     } catch (error) {
-        const micBtn = document.getElementById('micBtn');
-        micBtn.disabled = true;
+        document.querySelectorAll('.mic-btn').forEach(btn => {
+            btn.disabled = true;
+        });
     }
 }
 
@@ -170,12 +166,17 @@ function setupEventListeners() {
         sendChatMessage();
     });
 
-    document.getElementById('micBtn').addEventListener('click', toggleMicrophone);
-    document.getElementById('speakerBtn').addEventListener('click', toggleSpeaker);
+    document.querySelectorAll('.mic-btn').forEach(btn => {
+        btn.addEventListener('click', toggleMicrophone);
+    });
+    
+    document.querySelectorAll('.speaker-btn').forEach(btn => {
+        btn.addEventListener('click', toggleSpeaker);
+    });
 }
 
 async function toggleMicrophone() {
-    const micBtn = document.getElementById('micBtn');
+    const btns = document.querySelectorAll('.mic-btn');
     
     if (!micEnabled) {
         try {
@@ -204,9 +205,12 @@ async function toggleMicrophone() {
             
             micEnabled = true;
             micMuted = false;
-            micBtn.innerHTML = '<i class="bi bi-mic"></i>';
-            micBtn.classList.remove('btn-outline-success');
-            micBtn.classList.add('btn-success');
+            
+            btns.forEach(btn => {
+                btn.innerHTML = '<i class="bi bi-mic"></i>';
+                btn.classList.remove('btn-outline-success');
+                btn.classList.add('btn-outline-success');
+            });
             
             if (!speakerEnabled) {
                 toggleSpeaker();
@@ -221,27 +225,34 @@ async function toggleMicrophone() {
         micMuted = !micMuted;
         
         if (micMuted) {
-            micBtn.innerHTML = '<i class="bi bi-mic-mute"></i>';
-            micBtn.classList.remove('btn-success');
-            micBtn.classList.add('btn-danger');
+            btns.forEach(btn => {
+                btn.innerHTML = '<i class="bi bi-mic-mute"></i>';
+                btn.classList.remove('btn-outline-success');
+                btn.classList.add('btn-outline-secondary');
+            });
             addMessage('System', 'Microphone muted', 'system');
         } else {
-            micBtn.innerHTML = '<i class="bi bi-mic"></i>';
-            micBtn.classList.remove('btn-danger');
-            micBtn.classList.add('btn-success');
+            btns.forEach(btn => {
+                btn.innerHTML = '<i class="bi bi-mic"></i>';
+                btn.classList.remove('btn-outline-secondary');
+                btn.classList.add('btn-outline-success');
+            });
             addMessage('System', 'Microphone unmuted', 'system');
         }
     }
 }
 
 function toggleSpeaker() {
-    const speakerBtn = document.getElementById('speakerBtn');
+    const btns = document.querySelectorAll('.speaker-btn');
     
     if (!speakerEnabled) {
         speakerEnabled = true;
-        speakerBtn.innerHTML = '<i class="bi bi-volume-up"></i>';
-        speakerBtn.classList.remove('btn-outline-secondary');
-        speakerBtn.classList.add('btn-primary');
+        
+        btns.forEach(btn => {
+            btn.innerHTML = '<i class="bi bi-volume-up"></i>';
+            btn.classList.remove('btn-outline-secondary');
+            btn.classList.add('btn-outline-success');
+        });
         
         if (audioCtx.state === 'suspended') {
             audioCtx.resume();
@@ -250,9 +261,12 @@ function toggleSpeaker() {
         addMessage('System', 'Speaker enabled', 'system');
     } else {
         speakerEnabled = false;
-        speakerBtn.innerHTML = '<i class="bi bi-volume-mute"></i>';
-        speakerBtn.classList.remove('btn-primary');
-        speakerBtn.classList.add('btn-outline-secondary');
+        
+        btns.forEach(btn => {
+            btn.innerHTML = '<i class="bi bi-volume-mute"></i>';
+            btn.classList.remove('btn-outline-success');
+            btn.classList.add('btn-outline-secondary');
+        });
         
         addMessage('System', 'Speaker disabled', 'system');
     }
@@ -316,7 +330,7 @@ function addMessage(sender, text, type = 'chat') {
 function enableChatInput() {
     document.getElementById('messageInput').disabled = false;
     document.querySelector('#chatForm button').disabled = false;
-    document.getElementById('speakerBtn').disabled = false;
+    document.querySelectorAll('.speaker-btn').forEach(btn => btn.disabled = false);
 }
 
 function disableChatInput() {
@@ -339,6 +353,17 @@ window.addEventListener('beforeunload', () => {
         audioStream.getTracks().forEach(track => track.stop());
     }
 });
+
+(function() {
+    const host = window.location.hostname;
+    const protocol = window.location.protocol;
+    const isLocal = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+
+    if (!isLocal && protocol === 'http:') {
+        console.log("Redirecting to HTTPS...");
+        window.location.href = window.location.href.replace('http:', 'https:');
+    }
+})();
 </script>
 </body>
 </html>

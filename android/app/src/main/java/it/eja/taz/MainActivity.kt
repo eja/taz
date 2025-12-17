@@ -27,12 +27,14 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
+import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var mainLayout: LinearLayout
     private lateinit var bleHelper: BLE
     private lateinit var hotspotHelper: Hotspot
+    private lateinit var scannerHelper: Scanner
     private lateinit var prefs: SharedPreferences
 
     private val PERM_REQ_CODE = 100
@@ -64,12 +66,18 @@ class MainActivity : AppCompatActivity() {
 
         bleHelper = BLE(this)
         hotspotHelper = Hotspot(this)
+        scannerHelper = Scanner()
 
         if (savedInstanceState != null) {
             currentMode = savedInstanceState.getString("mode", "MENU")
             savedSsid = savedInstanceState.getString("ssid", "")
             savedPass = savedInstanceState.getString("pass", "")
             savedIp = savedInstanceState.getString("ip", "")
+        }
+
+        if (!prefs.contains("taz_name")) {
+            val rnd = UUID.randomUUID().toString().replace("-", "").take(8)
+            prefs.edit().putString("taz_name", rnd).apply()
         }
 
         checkPermissions()
@@ -162,17 +170,20 @@ class MainActivity : AppCompatActivity() {
         subtitle.setPadding(0, 0, 0, 80)
         mainLayout.addView(subtitle)
 
-        val btnHost = createMenuButton("Server") { startHostMode() }
+        val btnHost = createMenuButton("WiFi Server") { startHostMode() }
         mainLayout.addView(btnHost)
 
-        val btnClient = createMenuButton("Client") { startClientMode() }
+        val btnClient = createMenuButton("Radio Scan") { startClientMode() }
         mainLayout.addView(btnClient)
 
-        val btnLocal = createMenuButton("Standalone") { startLocalMode() }
-        mainLayout.addView(btnLocal)
+        val btnScan = createMenuButton("Network Scan") { startScanMode() }
+        mainLayout.addView(btnScan)
 
         val btnSettings = createMenuButton("Settings") { showSettings() }
         mainLayout.addView(btnSettings)
+
+        val btnLocal = createMenuButton("Open") { startLocalMode() }
+        mainLayout.addView(btnLocal)
     }
 
     private fun createMenuButton(text: String, onClick: () -> Unit): Button {
@@ -236,11 +247,23 @@ class MainActivity : AppCompatActivity() {
         checkBle.isChecked = prefs.getBoolean("share_ble", true)
         mainLayout.addView(checkBle)
 
+        val nameLabel = TextView(this)
+        nameLabel.text = "Name"
+        nameLabel.textSize = 16f
+        nameLabel.setTextColor(Color.BLACK)
+        nameLabel.setPadding(10, 40, 0, 10)
+        mainLayout.addView(nameLabel)
+
+        val nameInput = EditText(this)
+        nameInput.inputType = InputType.TYPE_CLASS_TEXT
+        nameInput.setText(prefs.getString("taz_name", ""))
+        mainLayout.addView(nameInput)
+
         val passLabel = TextView(this)
         passLabel.text = "Password"
         passLabel.textSize = 16f
         passLabel.setTextColor(Color.BLACK)
-        passLabel.setPadding(10, 40, 0, 10)
+        passLabel.setPadding(10, 20, 0, 10)
         mainLayout.addView(passLabel)
 
         val passInput = EditText(this)
@@ -257,12 +280,11 @@ class MainActivity : AppCompatActivity() {
             prefs.edit()
                 .putBoolean("public_host", newPublic)
                 .putBoolean("share_ble", checkBle.isChecked)
+                .putString("taz_name", nameInput.text.toString())
                 .putString("password", passInput.text.toString())
                 .apply()
 
-            if (initialPublic != newPublic) {
-                Server.restartBinaryServer(this, getBinaryArgs())
-            }
+            Server.restartBinaryServer(this, getBinaryArgs())
             showMainMenu()
         }
         mainLayout.addView(btnSave)
@@ -279,6 +301,7 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 if (status != null) {
                     val sb = StringBuilder()
+                    sb.append("Name: ${status.name}\n")
                     sb.append("Uptime: ${status.uptime}\n")
                     sb.append("Version: ${status.version}\n")
                     sb.append("Port: ${status.port}\n")
@@ -296,6 +319,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun getBinaryArgs(): List<String> {
         val args = mutableListOf<String>()
+        val name = prefs.getString("taz_name", "")
+        if (!name.isNullOrEmpty()) {
+            args.add("--name")
+            args.add(name)
+        }
         if (prefs.getBoolean("public_host", true)) {
             args.add("--web-host")
             args.add("0.0.0.0")
@@ -376,6 +404,61 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private fun startScanMode() {
+        mainLayout.removeAllViews()
+
+        val title = TextView(this)
+        title.text = "Scanning..."
+        title.textSize = 24f
+        title.gravity = Gravity.CENTER
+        title.setTextColor(Color.BLACK)
+        title.setPadding(0, 0, 0, 30)
+        mainLayout.addView(title)
+
+        val scrollContainer = LinearLayout(this)
+        scrollContainer.orientation = LinearLayout.VERTICAL
+        mainLayout.addView(scrollContainer)
+
+        val ips = hotspotHelper.getAllIps()
+        var hasStarted = false
+
+        for (ip in ips) {
+            if (ip.startsWith("192.168.") || ip.startsWith("10.") || ip.startsWith("172.")) {
+                hasStarted = true
+                scannerHelper.scanSubnet(ip,
+                    onFound = { foundIp, name ->
+                        runOnUiThread {
+                            val btn = createMenuButton("$foundIp\n$name") {
+                                openWebView("http://$foundIp:35248")
+                            }
+                            scrollContainer.addView(btn)
+                        }
+                    },
+                    onFinish = {
+                        runOnUiThread {
+                            title.text = "Scan Finished"
+                        }
+                    }
+                )
+                break
+            }
+        }
+
+        if (!hasStarted) {
+            title.text = "No private network found"
+        }
+
+        val btnBack = createMenuButton("Back") {
+            showMainMenu()
+        }
+        val params = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        params.setMargins(0, 50, 0, 0)
+        btnBack.layoutParams = params
+        mainLayout.addView(btnBack)
+    }
     private fun updateUiForHost(ssid: String, pass: String, publicUrl: String) {
         mainLayout.removeAllViews()
         val wifiQrContent = "WIFI:T:WPA;S:$ssid;P:$pass;;"

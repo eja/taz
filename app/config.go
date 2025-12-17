@@ -16,14 +16,15 @@ import (
 
 const (
 	sessionCookie = "taz_auth"
-	appLabel      = "TAZ"
-	appVersion    = "1.12.16"
+	appName       = "TAZ"
+	appVersion    = "1.12.17"
 )
 
 //go:embed assets
 var embeddedAssets embed.FS
 
 var (
+	appLabel      = appName
 	externalLinks []ExternalLink
 	templates     *template.Template
 	appLogger     *log.Logger
@@ -45,6 +46,7 @@ type Options struct {
 	URLs           []string `json:"urls"`
 	DHCPInterfaces []string `json:"dhcp_interfaces"`
 	DNS            string   `json:"dns"`
+	Name           string   `json:"name"`
 }
 
 func initOptions() {
@@ -59,12 +61,13 @@ func initOptions() {
 	webPort := flag.Int("web-port", options.WebPort, "The port for the web server")
 	password := flag.String("password", options.Password, "Password for write operations (empty for no auth)")
 	rootPath := flag.String("root", options.RootPath, "The root directory for file management")
-	sysPath := flag.String("sys", "", "Path to the system directory (defaults to <root>/sys)")
+	sysPath := flag.String("sys", options.SystemPath, "Path to the system directory (defaults to <root>/sys)")
 	logEnabled := flag.Bool("log", options.LogEnabled, "Enable logging")
 	logFile := flag.String("log-file", options.LogFile, "Path to the log file")
 	flag.Var(&urlList, "url", "Link to display on root page. Format: 'Name|URL'. Repeatable.")
 	flag.Var(&dhcpList, "dhcp", "DHCP interface and subnet (e.g., 'wlan0:10.35.2.0/24'). Repeatable.")
-	dns := flag.String("dns", "", "Enable DNS sinkhole. Optionally provide an upstream IP (e.g., '8.8.8.8').")
+	dns := flag.String("dns", options.DNS, "Enable DNS sinkhole. Optionally provide an upstream IP (e.g., '8.8.8.8').")
+	name := flag.String("name", options.Name, "This TAZ name")
 
 	flag.Parse()
 
@@ -112,6 +115,10 @@ func initOptions() {
 	}
 	if isFlagSet["dns"] {
 		options.DNS = *dns
+	}
+	if isFlagSet["name"] {
+		options.Name = *name
+		appLabel = appName + "-" + *name
 	}
 
 	for _, entry := range options.URLs {

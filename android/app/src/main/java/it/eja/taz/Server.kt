@@ -14,6 +14,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 data class ServerStatus(
+    val name: String,
     val version: String,
     val uptime: Long,
     val port: Int
@@ -101,6 +102,7 @@ object Server {
                     val json = JSONObject(text)
                     
                     val status = ServerStatus(
+                        name = json.optString("name", "Unknown"),
                         version = json.optString("version", "Unknown"),
                         uptime = json.optLong("uptime", 0),
                         port = json.optInt("port",0)

@@ -328,12 +328,13 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	status := map[string]interface{}{
-		"name":    appLabel,
-		"version": appVersion,
-		"time":    time.Now().Unix(),
-		"ips":     getServingIPs(),
-		"port":    options.WebPort,
-		"uptime":  int(time.Since(uptime).Seconds()),
+		"name":      appLabel,
+		"version":   appVersion,
+		"time":      time.Now().Unix(),
+		"ips":       getServingIPs(),
+		"port":      options.WebPort,
+		"uptime":    int(time.Since(uptime).Seconds()),
+		"discovery": getDiscoveredPeers(),
 	}
 
 	json.NewEncoder(w).Encode(status)

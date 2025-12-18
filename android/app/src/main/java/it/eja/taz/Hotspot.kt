@@ -21,6 +21,7 @@ class Hotspot(private val context: Context) {
 
     companion object {
         private var reservation: WifiManager.LocalOnlyHotspotReservation? = null
+        private var hostIp: String? = null
     }
 
     fun getAllIps(): Set<String> {
@@ -36,11 +37,17 @@ class Hotspot(private val context: Context) {
                     }
                 }
             }
-        } catch (e: Exception) { }
+        } catch (e: Exception) {
+        }
         return ips
     }
 
-    private fun waitForIp(preIps: Set<String>, attempt: Int = 0, onSuccess: (String) -> Unit, onFailure: () -> Unit) {
+    private fun waitForIp(
+        preIps: Set<String>,
+        attempt: Int = 0,
+        onSuccess: (String) -> Unit,
+        onFailure: () -> Unit
+    ) {
         val postIps = getAllIps()
         val diff = postIps.minus(preIps)
         val ip = diff.firstOrNull()
@@ -58,7 +65,10 @@ class Hotspot(private val context: Context) {
         }
     }
 
-    fun startHost(onSuccess: (ssid: String, pass: String, ip: String) -> Unit, onFailure: () -> Unit) {
+    fun startHost(
+        onSuccess: (ssid: String, pass: String, ip: String) -> Unit,
+        onFailure: () -> Unit
+    ) {
         val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
         val preIps = getAllIps()
 
@@ -72,8 +82,10 @@ class Hotspot(private val context: Context) {
                         val ssid = removeQuotes(config?.SSID ?: "Unknown")
                         val pass = removeQuotes(config?.preSharedKey ?: "Unknown")
 
-                        waitForIp(preIps, 0,
+                        waitForIp(
+                            preIps, 0,
                             onSuccess = { ip ->
+                                hostIp = ip
                                 onSuccess(ssid, pass, ip)
                             },
                             onFailure = {
@@ -99,7 +111,9 @@ class Hotspot(private val context: Context) {
         try {
             reservation?.close()
             reservation = null
-        } catch (e: Exception) {}
+            hostIp = null
+        } catch (e: Exception) {
+        }
     }
 
     fun connectToWifi(ssid: String, pass: String, onSuccess: () -> Unit, onFailure: () -> Unit) {
@@ -119,13 +133,15 @@ class Hotspot(private val context: Context) {
                     .setNetworkSpecifier(specifier)
                     .build()
 
-                val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                val cm =
+                    context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
                 cm.requestNetwork(request, object : ConnectivityManager.NetworkCallback() {
                     override fun onAvailable(network: Network) {
                         super.onAvailable(network)
                         cm.bindProcessToNetwork(network)
                         onSuccess()
                     }
+
                     override fun onUnavailable() {
                         super.onUnavailable()
                         connectLegacyWifi(ssid, pass, onSuccess, onFailure)
@@ -139,7 +155,12 @@ class Hotspot(private val context: Context) {
         }
     }
 
-    private fun connectLegacyWifi(ssid: String, pass: String, onSuccess: () -> Unit, onFailure: () -> Unit) {
+    private fun connectLegacyWifi(
+        ssid: String,
+        pass: String,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit
+    ) {
         try {
             val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
             val wifiConfig = WifiConfiguration()
@@ -168,5 +189,17 @@ class Hotspot(private val context: Context) {
             return text.substring(1, text.length - 1)
         }
         return text
+    }
+
+    fun getRunningConfig(): Triple<String, String, String>? {
+        val res = reservation
+        val ip = hostIp
+        if (res != null && ip != null) {
+            val config = res.wifiConfiguration
+            val ssid = removeQuotes(config?.SSID ?: "")
+            val pass = removeQuotes(config?.preSharedKey ?: "")
+            return Triple(ssid, pass, ip)
+        }
+        return null
     }
 }

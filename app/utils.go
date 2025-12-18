@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -251,4 +252,21 @@ func handleSaveFile(w http.ResponseWriter, r *http.Request) {
 		url.QueryEscape("Saved "+filepath.Base(relativePath)),
 	)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
+
+func isPrivateIP(ipStr string) bool {
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return false
+	}
+	if ip.IsLoopback() || ip.IsUnspecified() {
+		return false
+	}
+	if ip4 := ip.To4(); ip4 != nil {
+		return ip4[0] == 10 ||
+			(ip4[0] == 172 && ip4[1] >= 16 && ip4[1] <= 31) ||
+			(ip4[0] == 192 && ip4[1] == 168) ||
+			(ip4[0] == 169 && ip4[1] == 254)
+	}
+	return false
 }

@@ -79,6 +79,8 @@ func main() {
 		ErrorLog: log.New(&logFilter{w: logOutput}, "", log.LstdFlags),
 	}
 
+	startDiscovery()
+
 	appLogger.Printf("Starting TAZ file manager on http://%s", addr)
 	if err := server.Serve(mux); err != nil {
 		log.Fatalf("Failed to start server: %v", err)

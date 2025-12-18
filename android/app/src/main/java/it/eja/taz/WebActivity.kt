@@ -118,7 +118,10 @@ class WebActivity : AppCompatActivity() {
                 val request = DownloadManager.Request(Uri.parse(url))
                 request.setMimeType(mimetype)
                 request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "taz_download")
+                request.setDestinationInExternalPublicDir(
+                    Environment.DIRECTORY_DOWNLOADS,
+                    "taz_download"
+                )
                 val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
                 dm.enqueue(request)
             } catch (e: Exception) {
@@ -138,7 +141,11 @@ class WebActivity : AppCompatActivity() {
                 updateLoadingState(false)
             }
 
-            override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: SslError?) {
+            override fun onReceivedSslError(
+                view: WebView?,
+                handler: SslErrorHandler?,
+                error: SslError?
+            ) {
                 handler?.proceed()
             }
         }
@@ -161,7 +168,10 @@ class WebActivity : AppCompatActivity() {
                 val intent = Intent(Intent.ACTION_GET_CONTENT)
                 intent.addCategory(Intent.CATEGORY_OPENABLE)
                 intent.type = "*/*"
-                startActivityForResult(Intent.createChooser(intent, "File Chooser"), FILECHOOSER_RESULTCODE)
+                startActivityForResult(
+                    Intent.createChooser(intent, "File Chooser"),
+                    FILECHOOSER_RESULTCODE
+                )
                 return true
             }
         }
@@ -214,6 +224,7 @@ class WebActivity : AppCompatActivity() {
         super.onDestroy()
         try {
             unregisterReceiver(downloadReceiver)
-        } catch (e: Exception) { }
+        } catch (e: Exception) {
+        }
     }
 }

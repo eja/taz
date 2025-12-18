@@ -16,9 +16,10 @@ class BLE(private val context: Context) {
 
     private val SERVICE_UUID = UUID.fromString("82935248-0000-1000-8000-00805f9b34fb")
     private val CHAR_UUID = UUID.fromString("82935248-0000-1000-8000-00805f9b34fc")
-
     private val btManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
     private val adapter = btManager.adapter
+    private var currentScanner: BluetoothLeScanner? = null
+    private var currentCallback: ScanCallback? = null
 
     companion object {
         private var gattServer: BluetoothGattServer? = null
@@ -39,9 +40,21 @@ class BLE(private val context: Context) {
                     val fullData = hostCredentials.toByteArray(Charsets.UTF_8)
                     if (offset < fullData.size) {
                         val chunk = fullData.copyOfRange(offset, fullData.size)
-                        gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, chunk)
+                        gattServer?.sendResponse(
+                            device,
+                            requestId,
+                            BluetoothGatt.GATT_SUCCESS,
+                            offset,
+                            chunk
+                        )
                     } else {
-                        gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, ByteArray(0))
+                        gattServer?.sendResponse(
+                            device,
+                            requestId,
+                            BluetoothGatt.GATT_SUCCESS,
+                            offset,
+                            ByteArray(0)
+                        )
                     }
                 } else {
                     gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, 0, null)
@@ -77,15 +90,21 @@ class BLE(private val context: Context) {
             gattServer?.close()
             advertiser = null
             gattServer = null
-        } catch (e: Exception) {}
+        } catch (e: Exception) {
+        }
     }
 
-    fun scanAndConnect(onResult: (ssid: String, pass: String, ip: String) -> Unit, onError: () -> Unit) {
+    fun scanAndConnect(
+        onResult: (ssid: String, pass: String, ip: String) -> Unit,
+        onError: () -> Unit
+    ) {
         val scanner = adapter.bluetoothLeScanner
         if (scanner == null) {
             onError()
             return
         }
+
+        currentScanner = scanner
 
         val settings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_BALANCED).build()
 
@@ -95,18 +114,28 @@ class BLE(private val context: Context) {
                 val record = result?.scanRecord
                 if (device != null && record != null) {
                     if (record.serviceUuids?.contains(ParcelUuid(SERVICE_UUID)) == true) {
-                        try {
-                            scanner.stopScan(this)
-                        } catch (e: Exception) {}
+                        stopScanning()
                         connectGatt(device, onResult)
                     }
                 }
             }
+
             override fun onScanFailed(errorCode: Int) {
                 onError()
             }
         }
+
+        currentCallback = callback
         scanner.startScan(emptyList(), settings, callback)
+    }
+
+    fun stopScanning() {
+        try {
+            currentScanner?.stopScan(currentCallback)
+        } catch (e: Exception) {
+        }
+        currentScanner = null
+        currentCallback = null
     }
 
     private fun connectGatt(device: BluetoothDevice, onResult: (String, String, String) -> Unit) {
@@ -129,7 +158,11 @@ class BLE(private val context: Context) {
                 }
             }
 
-            override fun onCharacteristicRead(gatt: BluetoothGatt?, charac: BluetoothGattCharacteristic?, status: Int) {
+            override fun onCharacteristicRead(
+                gatt: BluetoothGatt?,
+                charac: BluetoothGattCharacteristic?,
+                status: Int
+            ) {
                 if (status == BluetoothGatt.GATT_SUCCESS && charac != null) {
                     val data = String(charac.value, Charsets.UTF_8)
                     val parts = data.split("\t")

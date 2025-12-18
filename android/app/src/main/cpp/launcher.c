@@ -75,7 +75,7 @@ static int create_subprocess_internal(char const* cmd, char const* cwd, char* co
     }
 }
 
-JNIEXPORT jint JNICALL Java_it_eja_taz_Native_createSubprocess(
+JNIEXPORT jint JNICALL Java_it_eja_taz_Server_createSubprocess(
         JNIEnv* env, jclass clazz,
         jstring cmd, jstring cwd, jobjectArray args, jobjectArray envVars, jintArray processIdArray) {
 

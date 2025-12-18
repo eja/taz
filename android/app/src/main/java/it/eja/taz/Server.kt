@@ -2,7 +2,6 @@
 
 package it.eja.taz
 
-import android.R
 import android.content.Context
 import android.os.ParcelFileDescriptor
 import org.json.JSONObject
@@ -12,7 +11,7 @@ import java.io.FileInputStream
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
-
+    
 data class ServerStatus(
     val name: String,
     val version: String,
@@ -25,6 +24,19 @@ object Server {
     private var isStarted = false
     private var currentPid = 0
     private const val STATUS_URL = "http://127.0.0.1:35248/status"
+
+    init {
+        System.loadLibrary("launcher")
+    }
+
+    @JvmStatic
+    private external fun createSubprocess(
+        cmd: String,
+        cwd: String,
+        args: Array<String>,
+        envVars: Array<String>,
+        processIdArray: IntArray
+    ): Int
 
     fun setupFilesFolder(context: Context) {
         try {
@@ -61,7 +73,7 @@ object Server {
                 val env = arrayOf("HOME=$appDir", "TMPDIR=${context.cacheDir.absolutePath}")
                 val pid = IntArray(1)
 
-                val fd = Native.createSubprocess(binPath, appDir, args, env, pid)
+                val fd = createSubprocess(binPath, appDir, args, env, pid)
                 if (fd > 0) {
                     currentPid = pid[0]
                     val pfd = ParcelFileDescriptor.adoptFd(fd)
@@ -84,7 +96,7 @@ object Server {
             currentPid = 0
             isStarted = false
         }
-        Thread.sleep(200) 
+        Thread.sleep(200)
         startBinaryServer(context, extraArgs)
     }
 
@@ -100,12 +112,12 @@ object Server {
                 if (conn.responseCode == 200) {
                     val text = conn.inputStream.bufferedReader().readText()
                     val json = JSONObject(text)
-                    
+
                     val status = ServerStatus(
                         name = json.optString("name", "Unknown"),
                         version = json.optString("version", "Unknown"),
                         uptime = json.optLong("uptime", 0),
-                        port = json.optInt("port",0)
+                        port = json.optInt("port", 0)
                     )
                     callback(status)
                     return@Thread

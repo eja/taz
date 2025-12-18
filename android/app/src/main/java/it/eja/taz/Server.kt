@@ -11,7 +11,7 @@ import java.io.FileInputStream
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
-    
+
 data class ServerStatus(
     val name: String,
     val version: String,

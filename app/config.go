@@ -17,7 +17,7 @@ import (
 const (
 	sessionCookie = "taz_auth"
 	appName       = "TAZ"
-	appVersion    = "1.12.17"
+	appVersion    = "1.12.18"
 )
 
 //go:embed assets

@@ -1,4 +1,4 @@
-.PHONY: clean test lint taz android-libs
+.PHONY: clean test lint test taz
 
 all: lint taz
 
@@ -7,6 +7,9 @@ clean:
 
 lint:
 	@gofmt -w ./app
+
+test:
+	@go test -v ./test
 
 taz:
 	@mkdir -p build

@@ -148,7 +148,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        ui.showLoading("Radio Scanning...") {
+        ui.showLoading("Bluetooth Scanning...") {
             bleHelper.stopScanning()
             ui.showMainMenu()
         }

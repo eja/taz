@@ -146,7 +146,21 @@ class WebActivity : AppCompatActivity() {
                 handler: SslErrorHandler?,
                 error: SslError?
             ) {
-                handler?.proceed()
+                val builder = androidx.appcompat.app.AlertDialog.Builder(this@WebActivity)
+                var message = "SSL Certificate error."
+                when (error?.primaryError) {
+                    SslError.SSL_UNTRUSTED -> message = "The certificate authority is not trusted."
+                    SslError.SSL_EXPIRED -> message = "The certificate has expired."
+                    SslError.SSL_IDMISMATCH -> message = "The certificate Hostname mismatch."
+                    SslError.SSL_NOTYETVALID -> message = "The certificate is not yet valid."
+                }
+                message += " Do you want to continue anyway?"
+
+                builder.setTitle("SSL Certificate Error")
+                builder.setMessage(message)
+                builder.setPositiveButton("Continue") { _, _ -> handler?.proceed() }
+                builder.setNegativeButton("Cancel") { _, _ -> handler?.cancel() }
+                builder.create().show()
             }
         }
 

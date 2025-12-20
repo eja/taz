@@ -13,56 +13,145 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
+)
+
+const (
+	writeWait  = 10 * time.Second
+	pingPeriod = (60 * time.Second * 9) / 10
+	pongWait   = 60 * time.Second
+	sendBuffer = 256
 )
 
 var (
 	upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
-	roomClients = make(map[*websocket.Conn]bool)
-	roomMutex   = sync.Mutex{}
+	register   = make(chan *Client)
+	unregister = make(chan *Client)
+	broadcast  = make(chan Packet)
 )
 
-func mediaRoomHandler(w http.ResponseWriter, r *http.Request) {
-	ws, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		appLogger.Printf("WS upgrade error: %v", err)
-		return
-	}
-	defer ws.Close()
+type Client struct {
+	conn *websocket.Conn
+	send chan Packet
+}
 
-	roomMutex.Lock()
-	roomClients[ws] = true
-	roomMutex.Unlock()
+type Packet struct {
+	Sender  *Client
+	MsgType int
+	Data    []byte
+}
 
-	appLogger.Printf("Room client connected: %s", ws.RemoteAddr())
+func init() {
+	go runHub()
+}
+
+func runHub() {
+	clients := make(map[*Client]bool)
 
 	for {
-		msgType, msg, err := ws.ReadMessage()
-		if err != nil {
-			break
-		}
-
-		roomMutex.Lock()
-		for client := range roomClients {
-			if client != ws {
-				if err := client.WriteMessage(msgType, msg); err != nil {
-					client.Close()
-					delete(roomClients, client)
+		select {
+		case client := <-register:
+			clients[client] = true
+			if appLogger != nil {
+				appLogger.Printf("Room client connected: %s", client.conn.RemoteAddr())
+			}
+		case client := <-unregister:
+			if _, ok := clients[client]; ok {
+				delete(clients, client)
+				close(client.send)
+				if appLogger != nil {
+					appLogger.Printf("Room client disconnected: %s", client.conn.RemoteAddr())
+				}
+			}
+		case packet := <-broadcast:
+			for client := range clients {
+				if client != packet.Sender {
+					select {
+					case client.send <- packet:
+					default:
+						close(client.send)
+						delete(clients, client)
+					}
 				}
 			}
 		}
-		roomMutex.Unlock()
+	}
+}
+
+func (c *Client) readPump() {
+	defer func() {
+		unregister <- c
+		c.conn.Close()
+	}()
+	c.conn.SetReadLimit(512 * 1024)
+	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+
+	for {
+		msgType, msg, err := c.conn.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) && appLogger != nil {
+				appLogger.Printf("WS error: %v", err)
+			}
+			break
+		}
+		broadcast <- Packet{Sender: c, MsgType: msgType, Data: msg}
+	}
+}
+
+func (c *Client) writePump() {
+	ticker := time.NewTicker(pingPeriod)
+	defer func() {
+		ticker.Stop()
+		c.conn.Close()
+	}()
+
+	for {
+		select {
+		case packet, ok := <-c.send:
+			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if !ok {
+				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+
+			w, err := c.conn.NextWriter(packet.MsgType)
+			if err != nil {
+				return
+			}
+			w.Write(packet.Data)
+
+			if err := w.Close(); err != nil {
+				return
+			}
+
+		case <-ticker.C:
+			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
+		}
+	}
+}
+
+func mediaRoomHandler(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		if appLogger != nil {
+			appLogger.Printf("WS upgrade error: %v", err)
+		}
+		return
 	}
 
-	roomMutex.Lock()
-	delete(roomClients, ws)
-	roomMutex.Unlock()
-	appLogger.Printf("Room client disconnected: %s", ws.RemoteAddr())
+	client := &Client{conn: conn, send: make(chan Packet, sendBuffer)}
+	register <- client
+
+	go client.writePump()
+	go client.readPump()
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {

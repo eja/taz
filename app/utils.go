@@ -63,6 +63,7 @@ func renderPage(w http.ResponseWriter, r *http.Request, absPath, relativePath st
 			Isdir:   entry.IsDir(),
 			Size:    formatFileSize(info.Size()),
 			ModTime: info.ModTime().Format("2006-01-02 15:04"),
+			IsMap:   strings.HasSuffix(strings.ToLower(entry.Name()), ".pmtiles"),
 		})
 	}
 	sort.Slice(files, func(i, j int) bool {

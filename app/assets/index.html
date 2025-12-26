@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{.Title}}</title>
-    <link href="/static/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/static/bootstrap-icons.css">
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/bootstrap-icons.css">
     <style>
         .action-form, action-buttons { display: inline; }
         a { text-decoration: none; }
@@ -92,10 +92,13 @@
             <td>{{.ModTime}}</td>
             <td class="text-end">
                 {{if not .Isdir}}
-                <a href="/download?file={{.Path}}" class="btn btn-sm btn-outline-secondary" title="Download"><i class="bi bi-download"></i></a>
+                <a href="/download/{{.Path}}" class="btn btn-sm btn-outline-secondary" title="Download"><i class="bi bi-download"></i></a>
+                {{end}}
+                {{if .IsMap}}
+                <a href="/map/{{.Path}}" class="btn btn-sm btn-outline-secondary" title="Map"><i class="bi bi-globe"></i></a>
                 {{end}}
                 {{if or (not $.PasswordProtected) $.IsAuthenticated}}
-                    {{if not .Isdir}}
+                    {{if and (not .Isdir) (not .IsMap)}}
                     <a href="/edit?file={{.Path}}" class="btn btn-sm btn-outline-secondary" title="Edit"><i class="bi bi-pencil"></i></a>
                     {{end}}
                     <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#renameModal" data-bs-path="{{.Path}}" data-bs-name="{{.Name}}" title="Rename"><i class="bi bi-pencil-square"></i></button>
@@ -207,7 +210,7 @@
   </div>
 </div>
 
-<script src="/static/bootstrap.bundle.min.js"></script>
+<script src="/static/js/bootstrap.bundle.min.js"></script>
 <script>
 const renameModal = document.getElementById('renameModal');
 if (renameModal) {

@@ -266,16 +266,27 @@ func editHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func downloadHandler(w http.ResponseWriter, r *http.Request) {
-	relativePath := r.URL.Query().Get("file")
+	path := r.URL.Path
+
+	if !strings.HasPrefix(path, "/download/") {
+		http.Error(w, "Invalid download URL", http.StatusBadRequest)
+		return
+	}
+
+	relativePath := strings.TrimPrefix(path, "/download/")
+	relativePath = strings.TrimPrefix(relativePath, "/")
+
 	if relativePath == "" {
 		http.Error(w, "No file specified", http.StatusBadRequest)
 		return
 	}
+
 	absPath, err := getSafePath(relativePath)
 	if err != nil {
 		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
 	}
+
 	info, err := os.Stat(absPath)
 	if err != nil || info.IsDir() {
 		http.Error(w, "File not found or is a directory", http.StatusNotFound)
@@ -427,4 +438,20 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(status)
+}
+
+func mapHandler(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	if !strings.HasPrefix(path, "/map/") {
+		http.Error(w, "Invalid map URL", http.StatusBadRequest)
+		return
+	}
+	relativePath := strings.TrimPrefix(path, "/map/")
+
+	data := map[string]interface{}{
+		"File": "/download/" + template.HTML(relativePath),
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	templates.ExecuteTemplate(w, "map.html", data)
 }

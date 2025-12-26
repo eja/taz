@@ -18,10 +18,11 @@ func setupRoutes() {
 
 	http.HandleFunc("/", fileManagerHandler)
 	http.HandleFunc("/status", statusHandler)
-	http.HandleFunc("/download", downloadHandler)
+	http.HandleFunc("/download/", downloadHandler)
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/logout", logoutHandler)
 	http.HandleFunc("/edit", editHandler)
 	http.HandleFunc("/bbs", bbsHandler)
 	http.HandleFunc("/room", mediaRoomHandler)
+	http.HandleFunc("/map/", mapHandler)
 }

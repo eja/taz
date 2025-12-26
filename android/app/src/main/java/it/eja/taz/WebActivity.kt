@@ -108,9 +108,9 @@ class WebActivity : AppCompatActivity() {
         settings.allowFileAccess = true
         settings.mediaPlaybackRequiresUserGesture = false
         settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-
         settings.allowUniversalAccessFromFileURLs = true
         settings.allowFileAccessFromFileURLs = true
+        settings.setGeolocationEnabled(true)
 
         webView.setDownloadListener { url, _, _, mimetype, _ ->
             updateLoadingState(true)
@@ -169,6 +169,13 @@ class WebActivity : AppCompatActivity() {
                 runOnUiThread {
                     request.grant(request.resources)
                 }
+            }
+
+            override fun onGeolocationPermissionsShowPrompt(
+                origin: String,
+                callback: GeolocationPermissions.Callback
+            ) {
+                callback.invoke(origin, true, false)
             }
 
             override fun onShowFileChooser(

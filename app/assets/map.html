@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="/static/css/maplibre-gl.css" rel="stylesheet">
+    <style>
+        body { margin: 0; padding: 0;}
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <script src="/static/js/pmtiles.js"></script>
+    <script src="/static/js/maplibre-gl.js"></script>
+    <script src="/static/js/basemaps.js"></script>
+    <script>
+        const protocol = new pmtiles.Protocol();
+        maplibregl.addProtocol("pmtiles", protocol.tile);
+
+        let fileUrl = "{{.File}}";
+
+        if (fileUrl.substring(0,1) == "{") { fileUrl = window.location.search.slice(1); }
+
+        if (!fileUrl) {
+            alert("Add ?map.pmtiles to URL");
+            throw new Error("Missing file parameter");
+        }
+
+        const map = new maplibregl.Map({
+            container: "map",
+            style: {
+                version: 8,
+								sprite: window.location.origin+"/static/pics/light",
+                sources: {
+                    "protomaps": {
+                        type: "vector",
+                        url: "pmtiles://" + fileUrl
+                    }
+                },
+                layers: basemaps.layers("protomaps", basemaps.namedFlavor("light"), {lang: "en"})
+            },
+        });
+
+        map.addControl(new maplibregl.NavigationControl());
+
+        const options = {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0
+        };
+
+        function centerOnLocation(position) {
+            map.flyTo({
+							center: [position.coords.longitude, position.coords.latitude],
+							zoom: 7
+						});
+        }
+
+        function handleLocationError(error) {
+            console.log("Location Error", error);
+        }
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(centerOnLocation, handleLocationError, options);
+        }
+    </script>
+</body>
+</html>
+

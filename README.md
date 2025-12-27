@@ -9,6 +9,7 @@ The Android app provides a comprehensive mobile interface, allowing you to run a
 ## Features
 - **Web-based interface** - Access from any browser
 - **Full file management** - Upload, download, create folders, rename, delete
+- **PMTiles Viewer** - Built-in support for viewing and navigating `.pmtiles` map files
 - **BBS messaging system** - Optional bulletin board for team communication with audio room capability
 - **Optional password protection** - Secure write operations
 - **External links** - Add custom links to your file manager homepage
@@ -16,7 +17,12 @@ The Android app provides a comprehensive mobile interface, allowing you to run a
 - **Zero dependencies** - Single binary deployment
 - **Cross-platform** - Available for Linux, macOS, Windows, and Android
 - **Logging support** - Optional request logging to file or stderr
-- **Android app** - Full source included with BLE connectivity, WiFi hotspot, and network scanning
+
+## Protomaps and MapLibre Integration
+TAZ includes a specialized viewer for geospatial data. When a `.pmtiles` file is detected in the file list:
+- **Globe Icon**: A map icon will appear alongside the standard download one.
+- **Full-Screen Map**: Clicking the globe icon opens a high-performance, full-screen zoomable map interface.
+- **GPS Integration**: The map will automatically center on your current GPS position upon opening, if available.
 
 ## Android App
 
@@ -58,7 +64,7 @@ Before choosing an operational mode, you can configure the instance:
 
 ### Permissions
 The Android app requires specific permissions to function:
-- **Location & Nearby Devices**: Required for BLE scanning and WiFi management.
+- **Location & Nearby Devices**: Required for BLE scanning, WiFi management, and centering the map viewer.
 - **Audio**: Required for the BBS audio room feature.
 - **WiFi Control**: Required to create hotspots and connect to networks.
 
@@ -104,14 +110,12 @@ The BBS (Bulletin Board System) feature provides a simple messaging interface fo
 ```
 
 ### Using a Configuration File (`-config`)
-For complex setups, you can manage all command-line options using a JSON configuration file. This is useful for creating reusable and easily shareable configurations.
+For complex setups, you can manage all command-line options using a JSON configuration file.
 
 To use a configuration file, pass its path to the `-config` flag:
 ```bash
 ./taz -config my_settings.json
 ```
-
-In the JSON file, the option names are the same as the command-line flags, but with hyphens (`-`) replaced by underscores (`_`).
 
 **Example `config.json`:**
 ```json
@@ -129,14 +133,6 @@ In the JSON file, the option names are the same as the command-line flags, but w
 }
 ```
 
-**Note:** Any options passed directly on the command line will override the values specified in the configuration file. For example:
-```bash
-# The web port will be 9090, overriding the value in the config file.
-./taz -config config.json -web-port 9090
-```
-
-Here is the complete section for command line options, including the `name` parameter used by the Android application and the external link options.
-
 ## Command Line Options
 
 | Option | Default | Description |
@@ -151,15 +147,6 @@ Here is the complete section for command line options, including the `name` para
 | `-url` | (none) | External links (format: `Name\|URL`), can be used multiple times |
 | `-config` | (empty) | Path to a JSON configuration file |
 
-### External Links
-You can add custom links to the homepage using the `-url` flag multiple times:
-```bash
-./taz \
-  -url "Company Intranet|http://intranet.company.com" \
-  -url "Project Repository|https://github.com/user/project" \
-  -url "https://eja.tv"  # URL without custom name
-```
-
 ## Building from Source
 
 To build the console binary:
@@ -168,4 +155,3 @@ git clone https://github.com/eja/taz.git
 cd taz
 make
 ```
-

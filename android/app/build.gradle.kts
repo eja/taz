@@ -11,8 +11,8 @@ android {
         applicationId = "it.eja.taz"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.12.26"
+        versionCode = 5
+        versionName = "1.12.29"
 
         externalNativeBuild {
             cmake {

@@ -27,7 +27,7 @@ let fileUrl = "{{.File}}";
 if (fileUrl.substring(0, 1) == "{") { fileUrl = window.location.search.slice(1); }
 
 if (!fileUrl) {
-  alert("Add ?map.pmtiles to URL");
+  alert("Add ?map.pmtiles or ?map.mbtiles to URL");
   throw new Error("Missing file parameter");
 }
 
@@ -48,13 +48,54 @@ async function initMap() {
         detectedSchema = "openmaptiles";
       }
     } catch (e) {
-      console.warn("Could not read metadata, defaulting to generic", e);
+      console.warn("Could not read metadata, defaulting to protomaps", e);
+    }
+  } else if (fileUrl.includes(".mbtiles")) {
+    const mbtilesPath = fileUrl;
+    
+    try {
+      const metadataUrl = mbtilesPath + "/metadata.json";
+      const response = await fetch(metadataUrl);
+      const metadata = await response.json();
+      
+      if (metadata.description && metadata.description.toLowerCase().includes("openmaptiles")) {
+        detectedSchema = "openmaptiles";
+      }
+      
+      mapSource = {
+        type: "vector",
+        tiles: [window.location.origin + mbtilesPath + "/{z}/{x}/{y}"],
+        minzoom: metadata.minzoom || 0,
+        maxzoom: metadata.maxzoom || 14,
+        attribution: metadata.attribution || "MBTiles"
+      };
+      
+      if (metadata.bounds) {
+        if (typeof metadata.bounds === 'string') {
+          const bounds = metadata.bounds.split(',').map(parseFloat);
+          if (bounds.length === 4) {
+            mapSource.bounds = bounds;
+          }
+        } else if (Array.isArray(metadata.bounds)) {
+          mapSource.bounds = metadata.bounds;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not read MBTiles metadata, using defaults", e);
+      mapSource = {
+        type: "vector",
+        tiles: [window.location.origin + mbtilesPath + "/{z}/{x}/{y}"],
+        minzoom: 0,
+        maxzoom: 14,
+        attribution: "MBTiles"
+      };
     }
   } else {
     mapSource = {
       type: "vector",
       tiles: [window.location.origin + fileUrl + "/{z}/{x}/{y}"],
-      minzoom: 0, maxzoom: 14
+      minzoom: 0,
+      maxzoom: 14
     };
   }
 
@@ -62,7 +103,7 @@ async function initMap() {
 
   if (detectedSchema === "protomaps") {
     mapStyle.sources["protomaps"] = mapSource;
-    mapStyle.sprite = window.location.origin+"/static/pics/light";
+    mapStyle.sprite = window.location.origin + "/static/pics/light";
     mapStyle.layers = basemaps.layers("protomaps", basemaps.namedFlavor("light"), { lang: "en" });
   } else if (detectedSchema === "openmaptiles") {
     try {
@@ -72,7 +113,10 @@ async function initMap() {
       externalStyle.sprite = window.location.origin + "/static/pics/openmaptiles-bright";
       mapStyle = externalStyle;
     } catch (err) {
-      console.error("Failed to load external JSON style", err);
+      console.error("Failed to load external JSON style, falling back to protomaps", err);
+      mapStyle.sources["protomaps"] = mapSource;
+      mapStyle.sprite = window.location.origin + "/static/pics/light";
+      mapStyle.layers = basemaps.layers("protomaps", basemaps.namedFlavor("light"), { lang: "en" });
     }
   }
 
@@ -105,7 +149,8 @@ async function initMap() {
 
     if (usefulFeature) {
       if (usefulFeature.properties.height) {
-        finalValue = usefulFeature.properties.height; finalLabel = "Height"; 
+        finalValue = usefulFeature.properties.height;
+        finalLabel = "Height"; 
       } else if (usefulFeature.properties.ele) {
         finalValue = usefulFeature.properties.ele;
       } else if (usefulFeature.properties.elevation) {
@@ -126,7 +171,7 @@ async function initMap() {
         const layer = feature.sourceLayer || "N/A";
         const kind = feature.properties.class || feature.properties.kind || feature.properties.type || "";
 
-        if(processed.has(layer)) return;
+        if (processed.has(layer)) return;
         processed.add(layer);
 
         htmlContent += `

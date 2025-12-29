@@ -439,19 +439,3 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(status)
 }
-
-func mapHandler(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-	if !strings.HasPrefix(path, "/map/") {
-		http.Error(w, "Invalid map URL", http.StatusBadRequest)
-		return
-	}
-	relativePath := strings.TrimPrefix(path, "/map/")
-
-	data := map[string]interface{}{
-		"File": "/download/" + template.HTML(relativePath),
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	templates.ExecuteTemplate(w, "map.html", data)
-}

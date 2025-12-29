@@ -57,13 +57,14 @@ func renderPage(w http.ResponseWriter, r *http.Request, absPath, relativePath st
 		if err != nil {
 			continue
 		}
+		name := entry.Name()
 		files = append(files, FileInfo{
-			Name:    entry.Name(),
+			Name:    name,
 			Path:    filepath.ToSlash(filepath.Join(relativePath, entry.Name())),
 			Isdir:   entry.IsDir(),
 			Size:    formatFileSize(info.Size()),
 			ModTime: info.ModTime().Format("2006-01-02 15:04"),
-			IsMap:   strings.HasSuffix(strings.ToLower(entry.Name()), ".pmtiles"),
+			IsMap:   strings.HasSuffix(strings.ToLower(name), ".pmtiles") || strings.HasSuffix(strings.ToLower(name), ".mbtiles"),
 		})
 	}
 	sort.Slice(files, func(i, j int) bool {

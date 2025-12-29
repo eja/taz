@@ -6,8 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="/static/css/maplibre-gl.css" rel="stylesheet">
   <style>
-  body { margin: 0; padding: 0;}
-  #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    body { margin: 0; padding: 0; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
   </style>
 </head>
 
@@ -20,114 +20,145 @@
 <script src="/static/js/basemaps.js"></script>
 
 <script>
-
 const protocol = new pmtiles.Protocol();
 maplibregl.addProtocol("pmtiles", protocol.tile);
 
 let fileUrl = "{{.File}}";
-if (fileUrl.substring(0,1) == "{") { fileUrl = window.location.search.slice(1); }
+if (fileUrl.substring(0, 1) == "{") { fileUrl = window.location.search.slice(1); }
+
 if (!fileUrl) {
   alert("Add ?map.pmtiles to URL");
   throw new Error("Missing file parameter");
 }
 
-const map = new maplibregl.Map({
-  container: "map",
-  style: {
-    version: 8,
-    sprite: window.location.origin+"/static/pics/light",
-    sources: {
-      "protomaps": {
-        type: "vector",
-        url: "pmtiles://" + fileUrl
+async function initMap() {
+  let mapSource = {};
+  let detectedSchema = "protomaps"; 
+
+  if (fileUrl.includes(".pmtiles")) {
+    mapSource = {
+      type: "vector",
+      url: "pmtiles://" + fileUrl,
+      attribution: "PMTiles"
+    };
+    try {
+      const p = new pmtiles.PMTiles(fileUrl);
+      const metadata = await p.getMetadata();
+      if (metadata && metadata.description && metadata.description.toLowerCase().includes("openmaptiles")) {
+        detectedSchema = "openmaptiles";
       }
-    },
-    layers: basemaps.layers("protomaps", basemaps.namedFlavor("light"), {lang: "en"})
-  },
-});
-
-const geolocate = new maplibregl.GeolocateControl({
-  positionOptions: {
-    enableHighAccuracy: true
-  },
-  trackUserLocation: true,
-  showUserHeading: true
-});
-
-map.addControl(geolocate);
-
-map.addControl(new maplibregl.NavigationControl());
-
-let longPressTimer;
-const showPopup = (e) => {
-  const lat = e.lngLat.lat.toFixed(5);
-  const lng = e.lngLat.lng.toFixed(5);
-  const features = map.queryRenderedFeatures(e.point);
-
-  let finalValue = null;
-
-  const usefulFeature = features.find(f => 
-    (f.properties.height !== undefined && f.properties.height !== null) || 
-    (f.properties.elevation !== undefined && f.properties.elevation !== null)
-  );
-
-  if (usefulFeature) {
-    if (usefulFeature.properties.height) {
-      finalValue = usefulFeature.properties.height;
-      finalLabel = "Height"; 
-    } else if (usefulFeature.properties.elevation) {
-      finalValue = usefulFeature.properties.elevation;
-      finalLabel = "Elevation";
+    } catch (e) {
+      console.warn("Could not read metadata, defaulting to generic", e);
     }
-  } 
-
-  let htmlContent = `<strong>Lat:</strong> ${lat}<br><strong>Lng:</strong> ${lng}`;
-
-  if (finalValue !== null) {
-    htmlContent += `<br><strong>Ele:</strong> ${finalValue}m`;
-  }
-
-  if (features.length > 0) {
-    htmlContent += `<hr>`;
-    features.forEach((feature) => {
-      const layer = feature.sourceLayer || "N/A";
-      const kind = feature.properties.kind || "N/A";
-
-      htmlContent += `
-        <div class="feature-item">
-        <span style="color:#666;">Layer:</span> <b>${layer}</b><br>
-        <span style="color:#666;">Kind:</span> ${kind}
-        </div>`;
-    });
   } else {
-    htmlContent += `<br><em>No vector features here.</em>`;
+    mapSource = {
+      type: "vector",
+      tiles: [window.location.origin + fileUrl + "/{z}/{x}/{y}"],
+      minzoom: 0, maxzoom: 14
+    };
   }
 
-  new maplibregl.Popup({ closeOnClick: false })
-    .setLngLat(e.lngLat)
-    .setHTML(htmlContent)
-    .addTo(map);
-};
+  let mapStyle = { version: 8, sources: {}, layers: [] };
 
-const startTimer = (e) => {
-  clearTimeout(longPressTimer);
-  longPressTimer = setTimeout(() => {
-    showPopup(e);
-  }, 2000);
-};
+  if (detectedSchema === "protomaps") {
+    mapStyle.sources["protomaps"] = mapSource;
+    mapStyle.sprite = window.location.origin+"/static/pics/light";
+    mapStyle.layers = basemaps.layers("protomaps", basemaps.namedFlavor("light"), { lang: "en" });
+  } else if (detectedSchema === "openmaptiles") {
+    try {
+      const response = await fetch("/static/pics/openmaptiles.json");
+      const externalStyle = await response.json();
+      externalStyle.sources['openmaptiles'] = mapSource;
+      externalStyle.sprite = window.location.origin + "/static/pics/openmaptiles-bright";
+      mapStyle = externalStyle;
+    } catch (err) {
+      console.error("Failed to load external JSON style", err);
+    }
+  }
 
-const cancelTimer = () => {
-  clearTimeout(longPressTimer);
-};
+  const map = new maplibregl.Map({
+    container: "map",
+    style: mapStyle,
+  });
 
-map.on('mousedown', startTimer);
-map.on('touchstart', startTimer);
+  map.addControl(new maplibregl.GeolocateControl({
+    positionOptions: { enableHighAccuracy: true },
+    trackUserLocation: true,
+    showUserHeading: true
+  }));
+  map.addControl(new maplibregl.NavigationControl());
 
-map.on('mouseup', cancelTimer);
-map.on('touchend', cancelTimer);
-map.on('dragstart', cancelTimer);
+  let longPressTimer;
+  const showPopup = (e) => {
+    const lat = e.lngLat.lat.toFixed(5);
+    const lng = e.lngLat.lng.toFixed(5);
+    
+    const features = map.queryRenderedFeatures(e.point);
 
+    let finalValue = null;
+    let finalLabel = "Elevation";
+    
+    const usefulFeature = features.find(f => {
+      const p = f.properties;
+      return (p.height != null || p.elevation != null || p.ele != null);
+    });
+
+    if (usefulFeature) {
+      if (usefulFeature.properties.height) {
+        finalValue = usefulFeature.properties.height; finalLabel = "Height"; 
+      } else if (usefulFeature.properties.ele) {
+        finalValue = usefulFeature.properties.ele;
+      } else if (usefulFeature.properties.elevation) {
+        finalValue = usefulFeature.properties.elevation;
+      }
+    } 
+
+    let htmlContent = `<strong>Latitude:</strong> ${lat}<br><strong>Longitude:</strong> ${lng}`;
+
+    if (finalValue !== null) {
+      htmlContent += `<br><strong>${finalLabel}:</strong> ${finalValue}m`;
+    }
+
+    if (features.length > 0) {
+      htmlContent += `<hr>`;
+      const processed = new Set();
+      features.forEach((feature) => {
+        const layer = feature.sourceLayer || "N/A";
+        const kind = feature.properties.class || feature.properties.kind || feature.properties.type || "";
+
+        if(processed.has(layer)) return;
+        processed.add(layer);
+
+        htmlContent += `
+          <div class="feature-item">
+          <span style="color:#666;">Layer:</span> <b>${layer}</b><br>
+          <span style="color:#666;">Kind:</span> ${kind}
+          </div>`;
+      });
+    } else {
+      htmlContent += `<br><em>No vector features.</em>`;
+    }
+
+    new maplibregl.Popup({ closeOnClick: false, maxWidth: '300px' })
+      .setLngLat(e.lngLat)
+      .setHTML(htmlContent)
+      .addTo(map);
+  };
+
+  const startTimer = (e) => {
+    clearTimeout(longPressTimer);
+    longPressTimer = setTimeout(() => { showPopup(e); }, 500);
+  };
+  const cancelTimer = () => clearTimeout(longPressTimer);
+
+  map.on('mousedown', startTimer);
+  map.on('touchstart', startTimer);
+  map.on('mouseup', cancelTimer);
+  map.on('touchend', cancelTimer);
+  map.on('dragstart', cancelTimer);
+}
+
+initMap();
 </script>
 </body>
 </html>
-

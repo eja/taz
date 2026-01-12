@@ -65,6 +65,7 @@ func renderPage(w http.ResponseWriter, r *http.Request, absPath, relativePath st
 			Size:    formatFileSize(info.Size()),
 			ModTime: info.ModTime().Format("2006-01-02 15:04"),
 			IsMap:   strings.HasSuffix(strings.ToLower(name), ".pmtiles") || strings.HasSuffix(strings.ToLower(name), ".mbtiles"),
+			IsDb:    strings.HasSuffix(strings.ToLower(name), ".db"),
 		})
 	}
 	sort.Slice(files, func(i, j int) bool {

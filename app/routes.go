@@ -3,12 +3,21 @@
 package main
 
 import (
+	"encoding/base64"
 	"io/fs"
 	"log"
 	"net/http"
+
+	"github.com/eja/maps"
+	"github.com/eja/tabulita"
 )
 
 func setupRoutes() {
+	webAuth := options.Password
+	if webAuth != "" {
+		webAuth = base64.StdEncoding.EncodeToString([]byte(":" + options.Password))
+	}
+
 	assetsFS, err := fs.Sub(embeddedAssets, "assets")
 	if err != nil {
 		log.Fatalf("Failed to access embedded assets: %v", err)
@@ -24,5 +33,6 @@ func setupRoutes() {
 	http.HandleFunc("/edit", editHandler)
 	http.HandleFunc("/bbs", bbsHandler)
 	http.HandleFunc("/room", mediaRoomHandler)
-	http.HandleFunc("/map/", mapHandler)
+	http.Handle("/maps/", maps.New("/maps/", options.RootPath, ""))
+	http.Handle("/tabulita/", tabulita.New("/tabulita/", options.RootPath, webAuth))
 }

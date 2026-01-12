@@ -27,6 +27,7 @@ type FileInfo struct {
 	Path    string
 	Isdir   bool
 	IsMap   bool
+	IsDb    bool
 	Size    string
 	ModTime string
 }

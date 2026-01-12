@@ -5,8 +5,9 @@ go 1.24.0
 toolchain go1.24.11
 
 require (
+	github.com/eja/maps v0.1.12
+	github.com/eja/tabulita v0.1.11
 	github.com/gorilla/websocket v1.5.3
-	modernc.org/sqlite v1.42.2
 )
 
 require (
@@ -20,4 +21,5 @@ require (
 	modernc.org/libc v1.66.10 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
+	modernc.org/sqlite v1.43.0 // indirect
 )

@@ -95,10 +95,13 @@
                 <a href="/download/{{.Path}}" class="btn btn-sm btn-outline-secondary" title="Download"><i class="bi bi-download"></i></a>
                 {{end}}
                 {{if .IsMap}}
-                <a href="/map/{{.Path}}" class="btn btn-sm btn-outline-secondary" title="Map"><i class="bi bi-globe"></i></a>
+                <a href="/maps/map/{{.Path}}" class="btn btn-sm btn-outline-secondary" title="Map"><i class="bi bi-globe"></i></a>
                 {{end}}
                 {{if or (not $.PasswordProtected) $.IsAuthenticated}}
-                    {{if and (not .Isdir) (not .IsMap)}}
+                    {{if .IsDb}}
+                    <a href="/tabulita/db/{{.Path}}" class="btn btn-sm btn-outline-secondary" title="DB"><i class="bi bi-database"></i></a>
+                    {{end}}
+                    {{if and (not .Isdir) (not .IsMap) (not .IsDb)}}
                     <a href="/edit?file={{.Path}}" class="btn btn-sm btn-outline-secondary" title="Edit"><i class="bi bi-pencil"></i></a>
                     {{end}}
                     <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#renameModal" data-bs-path="{{.Path}}" data-bs-name="{{.Name}}" title="Rename"><i class="bi bi-pencil-square"></i></button>

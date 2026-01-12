@@ -13,10 +13,14 @@ import android.net.http.SslError
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.webkit.*
+import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.LinearLayout.*
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -139,6 +143,41 @@ class WebActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 updateLoadingState(false)
+            }
+
+            override fun onReceivedHttpAuthRequest(
+                view: WebView?,
+                handler: HttpAuthHandler?,
+                host: String?,
+                realm: String?
+            ) {
+                val usernameInput = EditText(this@WebActivity)
+                usernameInput.hint = "Username"
+
+                val passwordInput = EditText(this@WebActivity)
+                passwordInput.hint = "Password"
+                passwordInput.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+
+                val layout = LinearLayout(this@WebActivity)
+                layout.orientation = VERTICAL
+                layout.setPadding(50, 40, 50, 10)
+                layout.addView(usernameInput)
+                layout.addView(passwordInput)
+
+                androidx.appcompat.app.AlertDialog.Builder(this@WebActivity)
+                    .setTitle("Authentication Required")
+                    .setMessage("Enter username and password for $host")
+                    .setView(layout)
+                    .setPositiveButton("Login") { _, _ ->
+                        val username = usernameInput.text.toString()
+                        val password = passwordInput.text.toString()
+                        handler?.proceed(username, password)
+                    }
+                    .setNegativeButton("Cancel") { _, _ ->
+                        handler?.cancel()
+                    }
+                    .setCancelable(false)
+                    .show()
             }
 
             override fun onReceivedSslError(

@@ -2,8 +2,8 @@ github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkp
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/eja/maps v0.1.12 h1:drPoJ5QIwjYvlBqPqbyksCC3THPAafcjvL0WyImG7Ys=
 github.com/eja/maps v0.1.12/go.mod h1:JgG4hE5/6N80oUxRf0g9pSTQO/7gTnRBF9EVTqvL+34=
-github.com/eja/tabulita v0.1.11 h1:kqkvYQi7qvHwFYqPRbjWeQelOgxxXIoy5YygqOy7Bl4=
-github.com/eja/tabulita v0.1.11/go.mod h1:LcuCU5yLH+5aGZjyLRsGxbYYLNnkegphZbt+JLRFimU=
+github.com/eja/tabulita v0.1.24 h1:Lbe2xIr2iGaMTVVG5ZacFTREqjhQA5quQKv67X9/WKM=
+github.com/eja/tabulita v0.1.24/go.mod h1:LcuCU5yLH+5aGZjyLRsGxbYYLNnkegphZbt+JLRFimU=
 github.com/google/pprof v0.0.0-20250317173921-a4b03ec1a45e h1:ijClszYn+mADRFY17kjQEVQ1XRhq2/JR1M3sGqeJoxs=
 github.com/google/pprof v0.0.0-20250317173921-a4b03ec1a45e/go.mod h1:boTsfXsheKC2y+lKOCMpSfarhxDeIzfZG1jqGcPl3cA=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
